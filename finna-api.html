@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Finna API</title>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <script type="text/javascript" src="https://code.jquery.com/jquery-latest.min.js"></script>
+
+    <script type="text/javascript">
+      // Simple usage example of Finna API (see: api.finna.fi)
+      var maxPage = Math.floor(Math.random()*1000);
+      var timeout = null;
+      function getImage() {
+        var url = 'http://testi-instituutio.finna-dev.fi/api/api/search?';
+        var params = {
+          lookfor: '',
+          limit: 1,
+          field: ['id', 'title', 'buildings', 'images'],
+          view: 'jsonp',
+          filter: ['online_boolean:1', '~format:0/Image/', '~format:0/PhysicalObject/', '~building:0/HKM/', '~building:0/SLS/'],
+          page: 1+Math.floor(Math.random()*maxPage)
+        };
+
+        url += $.param(params) + '&callback=?';
+        $.getJSON(url, function(data) {
+          resultCnt = data["resultCount"];
+          if (resultCnt == 0) {
+             return;
+          }
+          maxPage = resultCnt;
+          var src = data.records[0]['images'][0];
+          var building = data.records[0]['buildings'][0]['translated'];
+          var title = data.records[0]['title'];
+          var href = 'http://finna.fi/Record/' + data.records[0]['id'];
+
+          $("#pic").load(function() {
+            $("#title").html(title);
+            $("#building").html(building);
+            $("#link").html(href).attr("href", href);
+            $("#container").removeClass("hide");
+            clearTimeout(timeout);
+            timeout = setTimeout(getImage, 5000);
+          }).attr('src', src);
+          $("#container").addClass("hide");
+        });
+      };
+      $(document).on("ready", function() {
+        getImage();
+      });
+    </script>
+
+    <style type="text/css">
+    body {
+      background: #000;
+      margin: 0;
+      margin-left: 10px;
+      height: 100%;
+    }
+    a {
+      color: white;
+      text-decoration: none;
+    }
+    #title {
+      font-size: 20px;
+      font-weight: bold;
+    }
+    .info {
+      max-width: 100%;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      padding: 15px;
+      width: 100%;
+      color: #fff;
+      font-family: 'Helvetica neue', Arial, Helvetica, sans-serif;
+      font-size: 13px;
+      font-style: normal;
+      background: rgba(0, 0, 0, 0.5);
+    }
+    img {
+      max-width: 98vw;
+      max-height: 98vh;
+      margin: 0 auto;
+      display: block;
+    }
+
+    #container {
+      opacity: 1;
+      transition: opacity .2s linear;
+      max-width: 98vw;
+      max-height: 98vh;
+      width: 100%;
+      height: 100%;
+    }
+    #container.hide {
+      opacity: 0;
+    }
+    </style>
+  </head>
+
+  <body>
+    <div id="container">
+      <div class="info">
+        <div id="building"></div>
+        <div id="title"></div>
+        <a target="_blank" href="#" id="link"></a>
+      </div>
+      <img id="pic"></img>
+    </div>
+  </body>
+</html>
