@@ -7,8 +7,8 @@
     <script type="text/javascript" src="https://code.jquery.com/jquery-latest.min.js"></script>
 
     <script type="text/javascript">
-      // Simple usage example of Finna API (see: api.finna.fi)
-      var maxPage = Math.floor(Math.random()*1000);
+      // Simple example of Finna API (see: api.finna.fi)
+      var maxPage = 1;
       var timeout = null;
       function getImage() {
         var url = 'http://testi-instituutio.finna-dev.fi/api/api/search?';
@@ -27,7 +27,10 @@
           if (resultCnt == 0) {
              return;
           }
-          maxPage = resultCnt;
+          if (maxPage == 1) {
+             maxPage = resultCnt;
+             getImage();
+          }
           var src = data.records[0]['images'][0];
           var building = data.records[0]['buildings'][0]['translated'];
           var title = data.records[0]['title'];
