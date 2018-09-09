@@ -1,0 +1,26 @@
+{
+  "name": "site",
+  "version": "1.0.0",
+  "description": "",
+  "main": "postcss.config.js",
+  "scripts": {
+      "uncss": "uncss dist/index.html > dist/styles.css"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "autoprefixer": "^9.1.5",
+    "cross-env": "^5.2.0",
+    "extract-text-webpack-plugin": "^3.0.2",
+    "glob-all": "^3.1.0",
+    "path": "^0.12.7",
+    "postcss": "^7.0.2",
+    "postcss-cli": "^6.0.0",
+    "purgecss": "^1.1.0",
+    "tailwindcss": "^0.6.5"
+  },
+  "devDependencies": {
+    "@fullhuman/postcss-purgecss": "^1.0.1",
+    "cssnano": "^4.1.0"
+  }
+}

@@ -1,0 +1,21 @@
+.header {       
+    background-image: url("pics/header.jpg");
+    height: 400px;
+}
+.blue-bkg {
+    background-color: #015bbe;
+}
+h1 > span {
+    background-color: #015bbe;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+}
+ul li:not(:first-child) {
+    margin-top: 1em;
+}
+button h3:after {
+    content: " \00BB";
+}
+h1 {
+    font-size: 2.2em;
+}
