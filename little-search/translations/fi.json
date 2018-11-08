@@ -1,0 +1,23 @@
+{
+    "online_boolean": "Saatavuus",
+    "online_boolean_1": "Verkkoaineistot",
+    
+    "format": "Aineistotyyppi",
+    "building": "Organisaatio",
+    "language": "Kieli",
+    "topic_facet": "Aihe",
+    
+    "Loading...": "Odota hetki...",
+    "Narrow search": "Rajaa hakua",
+    "Next": "Seuraava",
+    "Previous": "Edellinen",
+    "Results": "Tuloksia",
+    "Search more": "Hae lisää",
+    "Search!": "Hae!",
+    "View in Finna": "Katso Finnassa",
+    "Page": "Sivu",
+    "Back to results": "Takaisin hakutuloksiin",
+
+    "Subjects": "Aiheet",
+    "Genres": "Genret"
+}
