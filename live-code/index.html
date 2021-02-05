@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title></title>
+  <meta name="description" content="">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
+</head>
+
+<body class="p-2">
+
+  <button onclick="openWin()" class="p-2 bg-gray-500 text-gray-100">Open</button>
+  <textarea resizable="resizable" placeholder="Head tag content..." spellcheck="false" id="head" onkeyup="sendAll()" class="p-4 my-2 w-full bg-gray-800 text-gray-100 font-sans text-xs leading-loose tracking-wider" style="height:200px"></textarea>
+  <!-- <textarea resizable="resizable" placeholder="console.log('foo')" spellcheck="false" id="script" onkeyup="sendAll()" class="p-4 my-2 w-full bg-gray-800 text-gray-100 font-sans text-xs leading-loose tracking-wider" style="height:200px"></textarea> -->
+  <textarea resizable="resizable" placeholder="<div>hello world</div>" spellcheck="false" id="body" onkeyup="sendAll()" class="p-4 my-2 w-full bg-gray-800 text-gray-100 font-sans text-xs leading-loose tracking-wider" style="height:500px"></textarea>
+
+  <script type="text/javascript">
+    var win = [];
+    function send(w) {
+        var head = document.getElementById("head").value;
+        //var script = document.getElementById("script").value;
+        var body = document.getElementById("body").value;
+        w.postMessage({head, body}, "*");
+    }
+    function sendAll() {
+        win.forEach(function(w) { send(w) });
+    }
+    function openWin() {
+        var w = window.open("./listener.html", `win-{win.length}`);
+        win.push(w);
+        setTimeout(function() { send(w) }, 100);
+    }
+    openWin();
+  </script>
+
+</body>
+
+</html>

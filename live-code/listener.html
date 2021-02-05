@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+
+<head id="head">
+  <meta charset="utf-8">
+  <title></title>
+  <meta name="description" content="">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+
+<body>
+  <script type="text/javascript">
+    window.addEventListener("message", (e) => {
+        document.getElementById("head").innerHTML = e.data.head;
+        document.getElementById("content").innerHTML = e.data.body;
+
+        // var scriptTag = document.createElement("script");
+        // var el = document.createTextNode(e.data.script);
+        // scriptTag.appendChild(el); 
+        // document.getElementById("head").appendChild(scriptTag);
+    });
+  </script>
+
+  <div id="content"></div>
+
+</body>
+
+</html>
