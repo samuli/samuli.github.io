@@ -3,22 +3,40 @@
 
 <head id="head">
   <meta charset="utf-8">
-  <title></title>
-  <meta name="description" content="">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 
-<body>
+<body id="body">
   <script type="text/javascript">
     window.addEventListener("message", (e) => {
-        document.getElementById("head").innerHTML = e.data.head;
-        document.getElementById("content").innerHTML = e.data.body;
+      if (e.data.head) {
+       document.getElementById("head").innerHTML = e.data.head;
 
-        // var scriptTag = document.createElement("script");
-        // var el = document.createTextNode(e.data.script);
-        // scriptTag.appendChild(el); 
-        // document.getElementById("head").appendChild(scriptTag);
-    });
+       Array.from(document.getElementById('head').getElementsByTagName("script")).forEach(function (s) {
+         if (s.attributes && s.attributes.src) {
+           var scriptTag = document.createElement("script");
+           scriptTag.setAttribute("src", s.attributes.src.nodeValue);
+           scriptTag.setAttribute("type", "text/javascript");
+           document.getElementById("head").appendChild(scriptTag);
+         }
+       });
+     }
+     if (e.data.body) {
+       document.getElementById("body").innerHTML = e.data.body;
+     }
+     if (e.data.script) {
+       var s = document.getElementById("__app__");
+       if (s) {
+         s.remove();
+       }
+
+       var scriptTag = document.createElement("script");
+       scriptTag.setAttribute("id", "__app__");
+
+       var el = document.createTextNode(e.data.script);
+       scriptTag.appendChild(el);
+       document.getElementById("head").appendChild(scriptTag);
+     }
+   });
   </script>
 
   <div id="content"></div>

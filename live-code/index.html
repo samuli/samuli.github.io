@@ -6,34 +6,194 @@
   <title></title>
   <meta name="description" content="">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.59.2/codemirror.min.js"></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.59.2/mode/xml/xml.js"></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/2.3.0/alpine.js"></script>
+  
+  <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
+
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.59.2/codemirror.min.css" rel="stylesheet">
   <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
-</head>
-
-<body class="p-2">
-
-  <button onclick="openWin()" class="p-2 bg-gray-500 text-gray-100">Open</button>
-  <textarea resizable="resizable" placeholder="Head tag content..." spellcheck="false" id="head" onkeyup="sendAll()" class="p-4 my-2 w-full bg-gray-800 text-gray-100 font-sans text-xs leading-loose tracking-wider" style="height:200px"></textarea>
-  <!-- <textarea resizable="resizable" placeholder="console.log('foo')" spellcheck="false" id="script" onkeyup="sendAll()" class="p-4 my-2 w-full bg-gray-800 text-gray-100 font-sans text-xs leading-loose tracking-wider" style="height:200px"></textarea> -->
-  <textarea resizable="resizable" placeholder="<div>hello world</div>" spellcheck="false" id="body" onkeyup="sendAll()" class="p-4 my-2 w-full bg-gray-800 text-gray-100 font-sans text-xs leading-loose tracking-wider" style="height:500px"></textarea>
 
   <script type="text/javascript">
-    var win = [];
-    function send(w) {
-        var head = document.getElementById("head").value;
-        //var script = document.getElementById("script").value;
-        var body = document.getElementById("body").value;
-        w.postMessage({head, body}, "*");
-    }
-    function sendAll() {
-        win.forEach(function(w) { send(w) });
-    }
-    function openWin() {
-        var w = window.open("./listener.html", `win-{win.length}`);
-        win.push(w);
-        setTimeout(function() { send(w) }, 100);
-    }
-    openWin();
+
+   function app() {
+     let win = [];
+     let editor = null;
+     let db = new Dexie("code");
+     let section = 'body';
+     let doc = null;
+     let docId = 1
+     let docIds = [];
+     let sync = true;
+
+     db.version(5).stores({
+       code: '++id, body, head, script'
+     });
+
+     const send = function (w, currentSectionOnly = false) {
+       if (!sync && currentSectionOnly) {
+         return;
+       }
+       let data = {};
+       if (currentSectionOnly) {
+         data[section] = doc[section];
+       } else {
+         data = {...doc};
+       }
+       w.postMessage(data, "*");
+     };
+     const sendAll = function (currentSectionOnly = false) {
+       win.forEach(function(w) { send(w, currentSectionOnly) });
+     };
+     // const saveDoc = function () {
+     //   var val = editor ? editor.getValue() : '';
+     //   if (section === 'body') {
+     //     doc.body = val;
+     //   } else {
+     //     doc.head = val;
+     //   }
+     //   db.code.put(doc);
+     // };
+     const sendAllSection = function() {
+
+     };
+     const createEditor = function () {
+       if (!editor) {
+         var el = document.getElementById("editor");
+         var conf = {
+           value: el.value,
+           mode : "xml",
+           htmlMode: true,
+           lineNumbers: true,
+           tabSize: 2,
+         };
+         editor = CodeMirror.fromTextArea(el, conf);
+         editor.on("change", function () {
+           var val = editor.getValue();
+           doc[section] = val;
+           db.code.put(doc);
+           sendAll(true);
+         });
+       }
+     };
+     const initEditor = function () {
+       console.log("init editor", [section,doc]);
+       if (!editor) {
+         return;
+       }
+       editor.setValue(doc[section] || "");
+     };
+
+     return {
+       docId,
+       docIds,
+       sync,
+       sections: ['body', 'head', 'script'],
+
+       setSync: function (enabled) {
+         console.log("setsync", enabled);
+         this.sync = enabled;
+         sync = enabled;
+         if (sync) {
+           sendAll();
+         }
+       },
+       newDoc: function() {
+         doc = { head: '', body: '', script: '' };
+         var me = this;
+         db.code.add(doc).then(function(id) {
+           me.docId = id;
+           me.docIds.push(id);
+           initEditor();
+         }).catch(function(err) {
+           console.log(err);
+         });
+       },
+
+       deleteDoc: function() {
+         this.docIds = this.docIds.filter(id => parseInt(id) !== parseInt(this.docId));
+         db.code.delete(parseInt(this.docId));
+         if (this.docIds.length) {
+           this.docId = this.docIds[0];
+           this.openDoc();
+         } else {
+           newDoc();
+         }
+       },
+       openDoc: function () {
+         var me = this;
+         db.code.get(parseInt(this.docId)).then(function(res) {
+           doc = res || { id: me.docId, head: '', body: '', script: '' };
+           initEditor();
+         }).catch(function (err) {
+           console.log("err", err);
+           newDoc();
+         });
+       },
+
+       mounted: function () {
+         createEditor();
+         var me = this;
+         db.code.orderBy('id').primaryKeys(function (ids) {
+           const firstDoc = !ids.length;
+           if (firstDoc) {
+             me.newDoc();
+           }
+           if (!firstDoc) {
+             me.docIds = ids;
+             me.docId = ids[0];
+             me.openDoc();
+           }
+         });
+
+       },
+       openWin: function () {
+         console.log(`${window.location}/listener.html`);
+         var w = window.open(`${window.location.toString().replace("index.html", "")}/listener.html`, `win-{win.length}`);
+         win.push(w);
+         setTimeout(function() { send(w) }, 100);
+       },
+       setSection: function (id) {
+         section = id;
+         initEditor();
+         if (id === 'script') {
+           this.setSync(false);
+         }
+       },
+       getSection: () => section,
+     }
+   };
   </script>
+
+</head>
+
+<body x-data="app()" x-init="() => mounted()" class="p-2">
+  <div class="flex">
+    <button x-on:click="openWin()" class="p-2 bg-gray-500 text-gray-100">Browser</button>
+
+    <select class="ml-4" x-on:change="setSection($event.target.value)">
+      <template x-for="s in sections">
+        <option x-bind:value="s" x-text="s" x-bind:selected="getSection() === s"></option>
+      </template>
+    </select>
+    <input type="checkbox" x-bind:checked="sync === true" x-on:change="setSync($event.target.checked)">Sync</input>
+
+    <button x-on:click="newDoc()" class="ml-6 p-2 bg-gray-500 text-gray-100">New</button>
+    <button x-on:click="deleteDoc()" class="ml-6 p-2 bg-red-900 text-gray-100">Delete</button>
+
+    <select class="ml-4" x-model="docId" x-on:change="openDoc()">
+      <template x-for="id in docIds">
+        <option x-bind:value="id" x-bind:selected="id === docId" x-text="id"></option>
+      </template>
+    </select>
+  </div>
+  <!-- <textarea resizable="resizable" placeholder="Head tag content..." spellcheck="false" id="head" onkeyup="sendAll()" class="p-4 my-2 w-full bg-gray-800 text-gray-100 font-sans text-xs leading-loose tracking-wider" style="height:200px"></textarea> -->
+  <!-- <\!-- <textarea resizable="resizable" placeholder="console.log('foo')" spellcheck="false" id="script" onkeyup="sendAll()" class="p-4 my-2 w-full bg-gray-800 text-gray-100 font-sans text-xs leading-loose tracking-wider" style="height:200px"></textarea> -\-> -->
+    <textarea resizable="resizable" placeholder="<div>hello world</div>" spellcheck="false" id="editor" class="p-4 my-2 w-full bg-gray-800 text-gray-100 font-sans text-xs leading-loose tracking-wider" style="height:500px"></textarea>
+
+
 
 </body>
 
