@@ -31,12 +31,12 @@
 
    function app() {
      var win =  [];
+     var doc = null;
 
      return {
        editor: null,
        db: new Dexie("code"),
        section: 'body',
-       doc: null,
        docId: 1,
        docIds: [],
        sync: true,
@@ -44,9 +44,9 @@
        send: function (w, currentSectionOnly = false) {
          let data = {};
          if (false && currentSectionOnly) {
-           data[this.section] = this.doc[this.section];
+           data[this.section] = doc[this.section];
          } else {
-           data = {...this.doc};
+           data = {...doc};
          }
          //console.log("post", data);
          w.postMessage(data, "*");
@@ -82,8 +82,8 @@
            var me = this;
            this.editor.on("change", function () {
              var val = me.editor.getValue();
-             me.doc[me.section] = val;
-             me.db.code.put(me.doc);
+             doc[me.section] = val;
+             me.db.code.put(doc);
              if (me.sync) {
                me.sendAll(true);
              }
@@ -95,7 +95,7 @@
            return;
          }
          this.editor.setOption("mode", this.section === 'script' ? 'javascript' : 'xml');
-         this.editor.setValue(this.doc[this.section] || "");
+         this.editor.setValue(doc[this.section] || "");
        },
        getSyncCmd: function () {
          return this.section === 'script' ? this.openWin : this.sendAll;
@@ -116,9 +116,9 @@
          this.setSync(id === 'body');
        },
        newDoc: function() {
-         this.doc = { head: '<meta charset="utf-8">', body: '', script: '' };
+         doc = { head: '<meta charset="utf-8">', body: '', script: '' };
          var me = this;
-         this.db.code.add(this.doc).then(function(id) {
+         this.db.code.add(doc).then(function(id) {
            me.docId = id;
            me.docIds.push(id);
            me.initEditor();
@@ -139,7 +139,7 @@
        openDoc: function () {
          var me = this;
          this.db.code.get(parseInt(this.docId)).then(function(res) {
-           me.doc = res || { id: me.docId, head: '', body: '', script: '' };
+           doc = res || { id: me.docId, head: '', body: '', script: '' };
            me.initEditor();
          }).catch(function (err) {
            console.log("err", err);
@@ -148,7 +148,7 @@
        },
        downloadDoc: function () {
          fileName = `${this.docId}.html`;
-         var html = `<!doctype html><html lang="en"><head>${this.doc.head}${this.wrapScript(this.doc.script)}</head><body>${this.doc.body}</body></html>`;
+         var html = `<!doctype html><html lang="en"><head>${doc.head}${this.wrapScript(doc.script)}</head><body>${doc.body}</body></html>`;
          var blob = new Blob([html], {
            type: "text/plain;charset=utf-8"
          });
