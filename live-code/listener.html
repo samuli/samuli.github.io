@@ -7,6 +7,8 @@
 
 <body id="body">
   <script type="text/javascript">
+    var scriptsToLoad = [];
+    var scriptsLoaded = [];
     window.addEventListener("message", (e) => {
       if (e.data.cmd && e.data.cmd === "html") {
         e.source.postMessage(document.documentElement.outerHTML, "*");
@@ -14,20 +16,46 @@
       }
 
       if (e.data.head) {
-       document.getElementById("head").innerHTML = e.data.head;
-
-       Array.from(document.getElementById('head').getElementsByTagName("script")).forEach(function (s) {
+        document.getElementById("head").innerHTML = e.data.head;
+        var tags = [];
+        Array.from(document.getElementById('head').getElementsByTagName("script")).forEach(function (s) {
          if (s.attributes && s.attributes.src) {
+           var src = s.attributes.src.nodeValue;
+           if (scriptsLoaded.includes(src)) {
+             s.remove();
+           } else {
+             var tag = document.createElement("script");
+             tag.setAttribute("src", src);
+             tag.setAttribute("type", "text/javascript");
+             scriptsToLoad.push(src);
+             tag.addEventListener("load", function(e) {
+               scriptsLoaded.push(src);
+               scriptsToLoad = scriptsToLoad.filter(s => s !== src);
+               if (!scriptsToLoad.length && window.__init__) {
+                 __init__();
+               }
+             });
+             tags.push(tag);
+             s.remove();
+           }
+         } else {
            var scriptTag = document.createElement("script");
-           scriptTag.setAttribute("src", s.attributes.src.nodeValue);
            scriptTag.setAttribute("type", "text/javascript");
+           var el = document.createTextNode(s.innerText);
+           scriptTag.appendChild(el);
            document.getElementById("head").appendChild(scriptTag);
            s.remove();
          }
        });
+       tags.forEach(function(tag) {
+         document.getElementById("head").appendChild(tag);
+       });
      }
      if (e.data.body) {
        document.getElementById("body").innerHTML = e.data.body;
+       if (window.__init__) {
+         __init__();
+       }
      }
      if (e.data.script) {
        var s = document.getElementById("__app__");
@@ -37,15 +65,14 @@
 
        var scriptTag = document.createElement("script");
        scriptTag.setAttribute("id", "__app__");
-
-       var el = document.createTextNode(e.data.script);
+       scriptTag.setAttribute("type", "text/javascript");
+       var code = `function __init__() { ${e.data.script} };`;
+       var el = document.createTextNode(code);
        scriptTag.appendChild(el);
        document.getElementById("head").appendChild(scriptTag);
      }
    });
   </script>
-
-  <div id="content"></div>
 
 </body>
 
