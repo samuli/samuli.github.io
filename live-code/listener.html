@@ -3,18 +3,13 @@
 
 <head id="head">
   <meta charset="utf-8">
-</head>
 
-<body id="body">
+
+
   <script type="text/javascript">
     var scriptsToLoad = [];
     var scriptsLoaded = [];
     window.addEventListener("message", (e) => {
-      if (e.data.cmd && e.data.cmd === "html") {
-        e.source.postMessage(document.documentElement.outerHTML, "*");
-        return;
-      }
-
       if (e.data.head) {
         document.getElementById("head").innerHTML = e.data.head;
         var tags = [];
@@ -73,7 +68,9 @@
      }
    });
   </script>
+</head>
 
+<body id="body">
 </body>
 
 </html>
