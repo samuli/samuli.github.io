@@ -1,10 +1,11 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
 <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/2.3.0/alpine.js"></script>
-<title>hYPErSheEP</title>
-</head><body><div x-data="{ a: 3, b: 1 }" x-bind:class="{ 'bg-gray-400': b, 'bg-blue-600': !b }" class="h-screen">
+  <title>hyPErSheEP</title></head><body><div x-data="{ a: 3, b: 1 }" x-bind:class="{ 'bg-gray-400': b, 'bg-blue-600': !b }" class="h-screen">
   <div class="fixed t-0 z-10 ">
-	  <input type="number" x-model="a"></input>
+	  <div x-text="a" class="bg-red-200 w-auto flex"></div>
+  	<div x-on:click="a-=1" class="block bg-green-200 m-4 p-2 py-5 rounded-xl text-bold text-4xl cursor-pointer">-</div>
+  	<div x-on:click="a+=1" class="block bg-green-200 m-4 p-2 py-5 rounded-xl text-bold text-4xl cursor-pointer">+</div>
   	<button x-on:click="b=!b" class="block bg-yellow-500 p-2 rounded-xl text-bold text-4xl">BOOM</button>
   </div>
 	<div class="flex flex-wrap flex-row align-center justify-items-center justify-center">
@@ -23,4 +24,4 @@
   <div class="flex absolute bg-yellow-500 w-auto font-medium text-8xl text-white">
     <div>hyPErSheEP</div>
   </div>
-</div></body></html>
+  </div></body></html>
