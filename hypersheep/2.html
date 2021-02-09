@@ -4,7 +4,9 @@
 <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/2.3.0/alpine.js"></script>
 <style>
   * { -webkit-tap-highlight-color: rgba(0, 0, 0, 0); }
-</style><script type="text/javascript">window.addEventListener("load", function() {  });</script></head><body><div x-data="{ cnt: 10, tot: 12 + Math.ceil(Math.random()*30) }" x-init="" class="">
+</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script type="text/javascript">window.addEventListener("load", function() {  });</script></head><body><div x-data="{ cnt: 10, tot: 12 + Math.ceil(Math.random()*30) }" x-init="" class="">
   <div class="bg-gray-200 scroll-y-hidden " >
 	  <div class="h-full flex flex-row content-end flex-wrap bg-gray-100 cursor-pointer" >
       <template x-for="i in [...Array(tot).keys()]">
