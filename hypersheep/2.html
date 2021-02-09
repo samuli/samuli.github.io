@@ -1,20 +1,20 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <title>Institute of advanced HyperMEDIA</title>
-<link href="2.min.css" rel="stylesheet">
+<link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
 <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/2.3.0/alpine.js"></script>
-</head><body><div x-data="{ cnt: 10, tot: 12 + Math.ceil(Math.random()*30) }" x-init="" class="">
+<script type="text/javascript">window.addEventListener("load", function() {  });</script></head><body><div x-data="{ cnt: 10, tot: 12 + Math.ceil(Math.random()*30) }" x-init="" class="">
   <div class="h-screen bg-gray-200 scroll-y-hidden absolute" x-on:click="tot+=1">
 	  <div class="h-full flex flex-row content-end flex-wrap bg-gray-100 cursor-pointer" >
       <template x-for="i in [...Array(tot).keys()]">
         <div x-bind:class="`
-           transition-all bg-gray-400 text-7xl text-gray-100
+           transition-all bg-gray-400 text-7xl text-gray-100 select-none
            mr-${i%5}
            -mt-${Math.ceil(Math.random()*2)}
            `" x-text="i%10">^</div>
       </template>
     </div>
   </div>
-  <div class="`z-10 absolute bottom-0 bg-green-300 text-3xl font-md
+  <div class="`z-10 absolute bottom-0 mb-10 bg-green-300 text-3xl font-md
               text-purple-700 `">
     Institute of Advanded HyperMEDIA
   </div>
