@@ -44,11 +44,12 @@ function app() {
           lineNumbers: true,
           tabSize: 2,
         };
+        var me = this;
         this.editor = CodeMirror.fromTextArea(el, conf);
         this.editor.setSize("100%", window.innerHeight-55);
         this.editor.setOption("extraKeys", {
-          "Ctrl-U": function(cm) {
-            (this.getSyncCmd())();
+          "Ctrl-Space": function(cm) {
+            me.sync = !me.sync;
           }
         });
         var me = this;
