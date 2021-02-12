@@ -12,16 +12,17 @@ function app() {
     docId: 1,
     docIds: [],
     sync: true,
+    editorInterval: null,
 
     send: function (w, currentSectionOnly = false) {
       let data = {};
-      if (false && currentSectionOnly) {
+      if (currentSectionOnly) {
         data[this.section] = doc[this.section];
       } else {
         data = {...doc};
       }
       //console.log("post", data);
-      w.postMessage(data, "*");
+      w.postMessage(data, window.location.toLocaleString());
     },
     sendAll: function (currentSectionOnly = false) {
       for (var i=0; i<win.length; i++) {
@@ -53,13 +54,19 @@ function app() {
           }
         });
         var me = this;
+
         this.editor.on("change", function () {
-          var val = me.editor.getValue();
-          doc[me.section] = val;
-          me.db.code.put(doc);
-          if (me.sync) {
-            me.sendAll(true);
+          if (me.editorInterval) {
+            clearInterval(me.editorInterval);
           }
+          me.editorInterval = setTimeout(function() {
+            var val = me.editor.getValue();
+            doc[me.section] = val;
+            me.db.code.put(doc);
+            if (me.sync) {
+              me.sendAll(true);
+            }
+          }, 700);
         });
       }
     },
@@ -123,13 +130,8 @@ function app() {
         me.newDoc();
       });
     },
-    downloadDoc: function () {
-      fileName = `${this.docId}.html`;
-      var html = `<!doctype html><html lang="en"><head>${doc.head}${this.wrapScript(doc.script)}</head><body>${doc.body}</body></html>`;
-      var blob = new Blob([html], {
-        type: "text/plain;charset=utf-8"
-      });
-      saveAs(blob, fileName);
+    downloadDoc: function (cssStyles) {
+      win[0].postMessage({cmd: "export"}, window.location.toLocaleString());
     },
     mounted: function () {
       this.createEditor();
@@ -152,9 +154,24 @@ function app() {
 
 
       window.addEventListener("message", function (e) {
-        if (e.data.cmd === "navigate") {
-          me.docId = parseInt(e.data.url.replace(".html", ""));
-          me.openDoc();
+        switch (e.data.cmd) {
+            case "navigate":
+              me.docId = parseInt(e.data.url.replace(".html", ""));
+              me.openDoc();
+              break;
+            case "export":
+              var fileName = `${this.docId}.html`;
+              var body = e.data.body; //doc.body;
+              var html = `<!doctype html><html lang="en">
+                <head>
+                    ${doc.head}${doc.script && me.wrapScript(doc.script)}
+                    <style>${e.data.styles}</style>
+                    </head><body>${body}</body></html>`;
+              var blob = new Blob([html], {
+                type: "text/plain;charset=utf-8"
+              });
+              saveAs(blob, fileName);
+              break;
         }
       }, false);
     },
