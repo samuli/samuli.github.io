@@ -1,4 +1,7 @@
+
 function App() {
+  var scriptsToLoad = [];
+  var scriptsLoaded = [];
 
   return {
     Storage: {
@@ -49,22 +52,61 @@ function App() {
       }
     },
 
-    // Browser: {
-    //   show: function(body) {
-    //     document.getElementsByTagName('body')[0].innerHTML = body;
-    //   }
-    // }
+    Browser: {
+      show: function(doc) {
+        document.getElementsByTagName('head')[0].innerHTML = doc.head;
+        var headEl = document.getElementsByTagName('head')[0];
+        var tags = [];
+        Array.from(headEl.getElementsByTagName("script")).forEach(function (s) {
+          if (s.attributes && s.attributes.src) {
+            var src = s.attributes.src.nodeValue;
+            if (scriptsLoaded.includes(src)) {
+              s.remove();
+            } else {
+              var tag = document.createElement("script");
+              tag.setAttribute("src", src);
+              tag.setAttribute("type", "text/javascript");
+              scriptsToLoad.push(src);
+              tag.addEventListener("load", function(e) {
+                scriptsLoaded.push(src);
+                scriptsToLoad = scriptsToLoad.filter(s => s !== src);
+                if (!scriptsToLoad.length && window.__init__) {
+                  __init__();
+                }
+              });
+              tags.push(tag);
+              s.remove();
+            }
+          } else {
+            var scriptTag = document.createElement("script");
+            scriptTag.setAttribute("type", "text/javascript");
+            var el = document.createTextNode(s.innerText);
+            scriptTag.appendChild(el);
+            headEl.appendChild(scriptTag);
+            s.remove();
+          }
+        });
+        tags.forEach(function(tag) {
+          headEl.appendChild(tag);
+        });
+
+        // Body
+        document.getElementsByTagName('body')[0].innerHTML = doc.body;
+      }
+    }
   }
 }
 
-// window.requestAnimationFrame(time => {
-//   var App = document.getElementsByTagName('body')[0].__x.getUnobservedData();
-//   var Storage = App.Storage;
-//   var id = window.location.search.substr(1);
-//   if (id) {
-//     Storage.read(id, doc => App.Browser.show(doc.body));
-//   }
-// });
+setTimeout(() => { //window.requestAnimationFrame(time => {
+  var App = document.getElementsByTagName('body')[0].__x.getUnobservedData();
+  var Storage = App.Storage;
+  Storage.init();
+  var id = window.location.search.substr(1);
+  console.log("init", id);
+  if (id) {
+    Storage.read(id, doc => { console.log("doc redi"); App.Browser.show(doc) });
+  }
+}, 40);
 
 
 // function Browser() {
