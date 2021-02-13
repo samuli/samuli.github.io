@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title></title>
+  <meta name="description" content="">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.59.2/codemirror.min.js"></script>
+       <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.59.2/mode/xml/xml.js"></script>
+       <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.59.2/mode/javascript/javascript.js"></script>
+       <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/2.3.0/alpine.js"></script>
+       <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.0/FileSaver.min.js"></script>
+  -->
+
+  <script src="https://cdn.jsdelivr.net/gh/kevinbatdorf/alpine-observe-other-components@latest/dist/index.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.x.x/dist/alpine.min.js" defer></script>
+
+  <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
+
+  <script src="core.js"></script>
+
+  <!-- <link href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.59.2/codemirror.min.css" rel="stylesheet"> -->
+  <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
+</head>
+
+<body x-data="App()"
+      x-init="Storage.init()"
+      class="p-2">
+  <div x-text="$store.editor.docId">docid</div>
+  <div x-text="JSON.stringify(Storage.docIds)">docisd</div>
+  <div x-text="JSON.stringify($store.editor.docIds)">storedocisd</div>
+  <div x-text="JSON.stringify($store.editor.section)">section</div>
+
+  <div class="flex" style="height:35px">
+
+    <button x-on:click="downloadDoc()" class="ml-6 p-2 bg-gray-500 text-gray-100">Download</button>
+
+    <button x-on:click="Storage.create({body: '', head: '', script: ''})"
+            class="ml-6 p-2 bg-gray-500 text-gray-100">New</button>
+    <button x-on:click="if (confirm('delete?')) { Storage.remove($store.editor.docId) }"
+            class="ml-6 p-2 bg-red-900 text-gray-100">Delete</button>
+
+    <div _x-bind="$watch(
+                 '$store.editor.doc',
+                 doc => $store.editor.content = $store.editor.doc[$store.editor.section])">
+      <select class="mx-4" _x-model="$store.editor.section"
+              x-on:change="{ $store.editor.section = $event.target.value; $store.editor.refreshContent() }">
+        <template x-for="s in ['head', 'body']">
+          <option x-bind:value="s" x-text="s" x-bind:selected="s===$store.editor.section"></option>
+        </template>
+      </select>
+    </div>
+
+    <select class="ml-4" x-model="$store.editor.docId"
+            x-on:change="Storage.read($store.editor.docId, doc => $store.editor.setDoc(doc))">
+      <template x-for="id in Storage.docIds">
+        <option x-bind:value="id" x-bind:selected="id === $store.editor.docId" x-text="id"></option>
+      </template>
+    </select>
+  </div>
+
+  <div>
+    <textarea x-model="$store.editor.content"
+              x-on:change="{
+                       $store.editor.doc[$store.editor.section] = $event.target.value;
+                       Storage.write($store.editor.doc)
+                       }"
+              resizable="resizable" placeholder="<div>hello world</div>" spellcheck="false" id="editor" class="h-full p-4 my-2 w-full"></textarea>
+  </div>
+
+
+  <script src="https://cdn.jsdelivr.net/npm/@ryangjchandler/spruce@2.x.x/dist/spruce.umd.js"></script>
+
+  <script type="text/javascript">
+   window.Spruce.store('editor', {
+     docId: null,
+     docIds: [],
+     set initialDocIds(ids) {
+       if (ids && !this.docIds.length && !this.docId) {
+         this.docId = ids[0];
+       }
+       this.docIds = ids;
+       console.log("set ids", [this.docId, ids, this.docIds]);
+     },
+     doc: null,
+     section: 'body',
+     content: 'nope',
+     refreshContent: function() {
+       this.content = this.doc[this.section];
+     },
+     setDoc: function(d) {
+       console.log("set loadeddoc", [JSON.stringify(d), this.section]);
+       this.doc = d;
+       this.refreshContent();
+     }
+   });
+   window.requestAnimationFrame(time => {
+     var App = document.getElementsByTagName('body')[0].__x.getUnobservedData();
+     var Storage = App.Storage;
+     Storage.documents(ids => {
+       var editor = window.Spruce.store('editor');
+       editor.initialDocIds = ids;
+       Storage.read(ids[0], doc => editor.setDoc(doc));
+     });
+   });
+  </script>
+
+</body>
+
+</html>
