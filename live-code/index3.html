@@ -8,13 +8,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <script src="https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.x.x/dist/alpine.min.js" defer></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.0/FileSaver.min.js"></script>
+
   <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dexie-observable@3.0.0-beta.10/dist/dexie-observable.min.js"></script>
+
 
   <script src="core.js"></script>
+  <script type="text/javascript">
+   window.__app__ = App();
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@ryangjchandler/spruce@2.x.x/dist/spruce.umd.js"></script>
+  <script type="text/javascript">
+   window.Spruce.store('App', {
+     ...window.__app__
+   });
+  </script>
+
 </head>
 
-<body x-data="App()">
+<body x-data="window.__app__" x-init="Storage.init()">
   index3
+
+
+
 </body>
 
 </html>

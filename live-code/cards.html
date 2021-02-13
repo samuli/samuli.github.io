@@ -1,0 +1,86 @@
+<!-- Watch changes -->
+
+<div x-data="{ id: $store.App.Storage.docId }" x-init="() => {
+   $store.App.Storage.db.on('changes', function(changes) {
+    changes.forEach(change => {
+      switch (change.type) {
+        case 2: // updated
+          if (change.key === $store.App.Storage.docId) {
+            $store.App.Storage.read(change.key, doc => $store.App.Browser.show(doc, document.getElementById('container')));
+          }
+          break;
+      }
+    });
+  });
+}" >
+  <div class="flex">
+    <div class="font-semibold mr-1">Watch document:</div>
+    <input x-model="id" x-on:change="$store.App.Storage.open(id, doc => $store.App.Browser.show(doc, document.getElementById('container')))"></input>
+  </div>
+  <div class="bg-yellow-500" id="container"></div>
+</div>
+
+
+<!-- Editor -->
+
+<div x-data="{
+  section: 'body', id: 51, doc: { head: '', body: '', script: '' } }"
+  x-init="() => { $store.App.Storage.read(51, d => doc = d);
+                        $store.App.Storage.documents(_ids => {} ) }">
+<div class="m-2 flex">
+  <div class="mr-2 flex items-center">Edit</div>
+  <select x-model="id"
+              @change="$store.App.Storage.read(id, _doc => doc = _doc )"
+               class="flex">
+    <template x-for="_id in $store.App.Storage.docIds">
+      <option x-text="_id" x-bind:selected="_id===id"></option>
+    </template>
+  </select>
+  <select x-model="section" class="ml-2">
+    <template x-for="s in ['head', 'body']">
+      <option x-text="s"></option>
+    </template>
+  </select>
+  <div @click="$store.App.Storage.create(null, newId => {
+    id = newId; $store.App.Storage.read(id, d => doc = d) })"
+    class="ml-2 px-2 py-1 bg-gray-200 cursor-pointer">
+    New</div>
+  <div @click="if (confirm('Delete document?')) {
+               $store.App.Storage.remove(id);
+               $store.App.Storage.read($store.App.Storage.docIds[0], _doc => doc = _doc)
+               }"
+       class="ml-2 px-2 py-1 bg-red-500 cursor-pointer">
+    Delete</div>
+</div>
+<textarea x-model="doc[section]"
+          x-on:change="{
+                   doc[section] = $event.target.value;
+                   $store.App.Storage.write(doc)
+                   }"
+          resizable="resizable" placeholder="<div>hello world</div>"
+          spellcheck="false" style="height:500px"
+          class="h-full p-4 my-2 w-full bg-gray-200 focus:border-yellow-500 border-2">                                                                                                                                                                                                  </textarea>
+</div>
+
+
+
+<!-- Export HTML -->
+<div x-data="{doc: null }"
+        x-init="$store.App.Storage.read(58, _doc => {
+  doc = _doc;
+  $store.App.Browser.show(_doc);
+  setTimeout(() => {
+    var css = $store.App.Browser.exportHTML();
+    var fileName = 'a.html';
+    var html =
+      `<!doctype html><html lang='en'>
+         <head>${doc.head}
+           <style>${css}</style>
+          </head><body>${doc.body}</body></html>`;
+    var blob = new Blob([html], {
+      type: 'text/plain;charset=utf-8'
+    });
+    saveAs(blob, fileName);
+  }, 500);
+})">
+</div>
