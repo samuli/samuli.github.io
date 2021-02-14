@@ -119,6 +119,34 @@ function App() {
     return nonClassRules.concat(arr).join("");
   };
 
+
+  var urlId = window.location.search.substr(1);
+  var navigate = function(id) {
+    if (typeof id !== 'undefined') {
+      var loc = window.location;
+      window.location = `${loc.protocol}//${loc.host}${loc.pathname}?${id}`;
+    }
+  };
+
+  var bootstrap = async function(db) {
+    var apps = ['editor', 'watch', 'export'];
+    var ids = [];
+    await Promise.all(apps.map(async app => {
+      var res = await fetch(`apps/${app}.html`);
+      if (res.status !== 200) {
+        console.log(`Error installing app ${app}`);
+      } else {
+        var body = await res.text();
+        var doc = {
+          title: app, body, head: '<link href="stack.css" rel="stylesheet">'
+        };
+        var id = await db.code.add(doc);
+         ids.push(id);
+      }
+    }));
+     return ids;
+  };
+
   return {
     Storage: {
       db: new Dexie("code"),
@@ -127,31 +155,46 @@ function App() {
 
       init: function() {
         var me = this;
-        this.db.version(6).stores({
-          code: '++id, body, head, script'
+        this.db.version(14).stores({
+          code: '++id, title, body, head'
         });
 
         this.db.open();
-        var id = window.location.search.substr(1);
-        console.log("init", id);
-        if (id) {
-          this.open(id, doc => showDoc(doc));
-        }
+        var me = this;
+        this.db.code.count().then(function(cnt) {
+          if (!cnt) {
+            bootstrap(me.db).then(ids => {
+              me.docIds = ids;
+              if (ids) {
+                navigate(ids[0]);
+              }
+            });
+          } else {
+            me.db.code.orderBy('id').primaryKeys(function (ids) {
+              me.docIds = ids;
+              if (urlId) {
+                me.open(urlId, doc => showDoc(doc));
+              }
+            });
+          }
+        });
       },
       documents: function(cb) {
         var me = this;
-        this.db.code.orderBy('id').primaryKeys(function (ids) {
-          me.docIds = ids;
-          //return ids;
-          cb(ids);
-        });
+        this.db.code.toArray()
+            .then(docs => cb(docs.map(doc => {
+              return { id: doc.id, title: doc.title }
+            })));
       },
-      create: function(doc, cb) {
+      create: function(doc, cb, db) {
         var me = this;
         if (!doc) {
-          doc = { body: '', head: '', script: '' };
+          doc = { body: '', title: '', head: '' };
         }
-        this.db.code.add(doc).then(function(id) {
+        if (typeof db === 'undefined') {
+          db = this.db;
+        }
+        db.code.add(doc).then(function(id) {
           me.docIds.push(id);
           me.write({...doc, id});
           cb(id);
@@ -164,7 +207,7 @@ function App() {
         this.docIds = this.docIds.filter(docId => parseInt(id) !== parseInt(docId));
         this.db.code.delete(parseInt(id));
         if (!this.docIds.length) {
-          this.create({body: '', 'head': '', script: ''});
+          this.create({body: '', 'head': '', title: ''});
         }
       },
       open: function(id, cb) {
@@ -172,22 +215,25 @@ function App() {
         this.read(this.docId, cb);
       },
       read: function(id, cb) {
-        console.log("read", [id, this.db]);
-        this.db.code.get(parseInt(id)).then(function(res) {
+          this.db.code.get(parseInt(id)).then(function(res) {
           cb(res);
         }).catch(function (err) {
           console.log("err", err);
         });
       },
-      write: function(doc) {
-        console.log("write", doc);
-        this.db.code.put(Object.assign({}, {...doc}));
+      write: function(doc, cb) {
+        if (typeof cb === 'undefined') {
+          cb = _res => {};
+        }
+        this.db.code.put(Object.assign({}, {...doc})).then(res => cb());
       }
     },
 
     Browser: {
       show: showDoc,
       exportHTML: exportHtml,
+      docId: urlId,
+      navigate,
     }
   }
 }

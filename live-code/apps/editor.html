@@ -1,0 +1,43 @@
+<div x-data="{
+             section: 'body', id: $store.App.Browser.docId,
+             documents: [],
+             doc: { head: '', body: '', script: '' } }"
+     x-init="() => {
+        $store.App.Storage.read(id, d => doc = d);
+        $store.App.Storage.documents(docs => documents = docs ) }">
+  <div class="m-2 flex">
+    <div class="mr-2 flex items-center">Edit</div>
+    <select x-model="id"
+            @change="$store.App.Storage.read(id, _doc => doc = _doc )"
+            class="flex">
+      <template x-for="{id:docId,title} in documents" :key=docId>
+        <option :value="docId" x-text="`${title} (${docId})`" x-bind:selected="docId===id"></option>
+      </template>
+    </select>
+    <select x-model="section" class="ml-2">
+      <template x-for="s in ['head', 'body']">
+        <option x-text="s"></option>
+      </template>
+    </select>
+    <div @click="$store.App.Storage.create(null, newId => {
+                 id = newId; $store.App.Storage.read(id, d => doc = d) })"
+         class="ml-2 px-2 py-1 bg-gray-200 cursor-pointer">
+      New</div>
+    <div @click="if (confirm('Delete document?')) {
+                 $store.App.Storage.remove(id);
+                 $store.App.Storage.read($store.App.Storage.docIds[0], _doc => doc = _doc)
+                 }"
+         class="ml-2 px-2 py-1 bg-red-500 cursor-pointer">
+      Delete</div>
+  </div>
+  <textarea x-model="doc[section]"
+            x-on:change="{
+                     doc[section] = $event.target.value;
+                     $store.App.Storage.write(doc)
+                     }"
+            resizable="resizable" placeholder="<div>hello world</div>"
+            spellcheck="false" style="height:500px"
+            class="h-full p-4 my-2 w-full bg-gray-200 text-xs font-mono
+                       focus:border-yellow-500 border-2">
+  </textarea>
+</div>
