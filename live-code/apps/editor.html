@@ -1,10 +1,10 @@
 <div x-data="{
              section: 'body', id: $store.App.Browser.docId,
-             documents: [],
+             documents: $store.App.Storage.documents,
              doc: { head: '', body: '', script: '' } }"
      x-init="() => {
         $store.App.Storage.read(id, d => doc = d);
-        $store.App.Storage.documents(docs => documents = docs ) }">
+         }">
   <div class="m-2 flex">
     <div class="mr-2 flex items-center">Edit</div>
     <select x-model="id"
@@ -19,8 +19,11 @@
         <option x-text="s"></option>
       </template>
     </select>
-    <div @click="$store.App.Storage.create(null, newId => {
-                 id = newId; $store.App.Storage.read(id, d => doc = d) })"
+    <div @click="{ if (title = prompt('Document title?')) {
+      $store.App.Storage.create({title}, newId => {
+        id = newId;
+        $store.App.Storage.read(id, d => doc = d)
+      })}}"
          class="ml-2 px-2 py-1 bg-gray-200 cursor-pointer">
       New</div>
     <div @click="if (confirm('Delete document?')) {

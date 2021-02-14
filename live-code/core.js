@@ -128,6 +128,10 @@ function App() {
     }
   };
 
+  var docTemplate = {
+    title: '', body: '', head: '<link href="stack.css" rel="stylesheet">'
+  };
+
   var bootstrap = async function(db) {
     var apps = ['editor', 'watch', 'export'];
     var ids = [];
@@ -140,17 +144,19 @@ function App() {
         var doc = {
           title: app, body, head: '<link href="stack.css" rel="stylesheet">'
         };
+        //var doc = Object.assign(docTemplate, {title: app, body});
         var id = await db.code.add(doc);
-         ids.push(id);
+        ids.push({id, title:doc.title});
       }
     }));
-     return ids;
+    return ids;
   };
 
   return {
     Storage: {
       db: new Dexie("code"),
       docIds: [],
+      documents: [],
       docId: null,
 
       init: function() {
@@ -163,40 +169,36 @@ function App() {
         var me = this;
         this.db.code.count().then(function(cnt) {
           if (!cnt) {
-            bootstrap(me.db).then(ids => {
-              me.docIds = ids;
-              if (ids) {
-                navigate(ids[0]);
+            bootstrap(me.db).then(docs => {
+              me.documents = docs;
+              me.docIds = docs.map(d => d.id);
+              if (me.docIds) {
+                navigate(me.docIds[0]);
               }
             });
           } else {
-            me.db.code.orderBy('id').primaryKeys(function (ids) {
-              me.docIds = ids;
-              if (urlId) {
-                me.open(urlId, doc => showDoc(doc));
-              }
-            });
+            me.db.code.toArray()
+                .then(docs => {
+                  me.documents = docs.map(doc => {
+                    return { id: doc.id, title: doc.title };
+                  });
+                  me.docIds = docs.map(d => d.id);
+                  id = urlId ? urlId : me.docIds[0];
+                  me.open(id, doc => showDoc(doc));
+                });
           }
         });
       },
-      documents: function(cb) {
-        var me = this;
-        this.db.code.toArray()
-            .then(docs => cb(docs.map(doc => {
-              return { id: doc.id, title: doc.title }
-            })));
-      },
       create: function(doc, cb, db) {
         var me = this;
-        if (!doc) {
-          doc = { body: '', title: '', head: '' };
-        }
+        doc = Object.assign(docTemplate, doc);
         if (typeof db === 'undefined') {
           db = this.db;
         }
         db.code.add(doc).then(function(id) {
           me.docIds.push(id);
           me.write({...doc, id});
+          me.documents.push({id,title:doc.title});
           cb(id);
         }).catch(function(err) {
           console.log(err);

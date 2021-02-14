@@ -1,29 +1,19 @@
-<div x-data="{ id: $store.App.Storage.docId, documents: [] }" x-init="() => {
-  $store.App.Storage.documents(docs => documents = docs);
-  $store.App.Storage.db.on('changes', function(changes) {
-    changes.forEach(change => {
-      switch (change.type) {
-        case 2: // updated
-          if (change.key === $store.App.Storage.docId) {
-            $store.App.Storage.read(change.key, doc => $store.App.Browser.show(doc, document.getElementById('container')));
-          }
-          break;
-      }
+<div x-data="{doc: null }"
+        x-init="$store.App.Storage.read($store.App.Browser.docId, _doc => {
+  doc = _doc;
+  $store.App.Browser.show(_doc);
+  setTimeout(() => {
+    var css = $store.App.Browser.exportHTML();
+    var fileName = 'a.html';
+    var html =
+      `<!doctype html><html lang='en'>
+         <head>${doc.head}
+           <style>${css}</style>
+          </head><body>${doc.body}</body></html>`;
+    var blob = new Blob([html], {
+      type: 'text/plain;charset=utf-8'
     });
-  });
-}" >
-  <div class="flex m-2">
-    <div class="font-semibold mr-1">Watch document:</div>
-    <select
-      x-model="id"
-      @change="$store.App.Storage.open(id, doc =>
-         $store.App.Browser.show(doc, document.getElementById('container')))"
-      class="flex"
-    >
-      <template x-for="{id:docId,title} in documents" :key=docId>
-        <option :value="docId" x-text="`${title} (${docId})`" x-bind:selected="docId===id"></option>
-      </template>
-    </select>
-  </div>
-  <div id="container"></div>
+    saveAs(blob, fileName);
+  }, 500);
+})">
 </div>
