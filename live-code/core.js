@@ -173,7 +173,7 @@ function App() {
               me.documents = docs;
               me.docIds = docs.map(d => d.id);
               if (me.docIds) {
-                navigate(me.docIds[0]);
+                navigate(me.documents.filter(d => d.title === 'editor')[0].id);
               }
             });
           } else {

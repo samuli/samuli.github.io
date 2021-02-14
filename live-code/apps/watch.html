@@ -1,19 +1,20 @@
-<div x-data="{doc: null }"
-        x-init="$store.App.Storage.read($store.App.Browser.docId, _doc => {
-  doc = _doc;
-  $store.App.Browser.show(_doc);
-  setTimeout(() => {
-    var css = $store.App.Browser.exportHTML();
-    var fileName = 'a.html';
-    var html =
-      `<!doctype html><html lang='en'>
-         <head>${doc.head}
-           <style>${css}</style>
-          </head><body>${doc.body}</body></html>`;
-    var blob = new Blob([html], {
-      type: 'text/plain;charset=utf-8'
+<div x-data="{ id: $store.App.Storage.docId }" x-init="() => {
+   $store.App.Storage.db.on('changes', function(changes) {
+    changes.forEach(change => {
+      switch (change.type) {
+        case 2: // updated
+          if (change.key === $store.App.Storage.docId) {
+            $store.App.Storage.read(change.key, doc => $store.App.Browser.show(doc, document.getElementById('container')));
+          }
+          break;
+      }
     });
-    saveAs(blob, fileName);
-  }, 500);
-})">
+  });
+}" >
+  <div class="flex">
+    <div class="font-semibold mr-1">Watch document:</div>
+    <input x-model="id" x-on:change="$store.App.Storage.open(id, doc => $store.App.Browser.show(doc, document.getElementById('container')))"></input>
+  </div>
+  <div id="container"></div>
 </div>
+
