@@ -183,7 +183,7 @@ function App() {
                     return { id: doc.id, title: doc.title };
                   });
                   me.docIds = docs.map(d => d.id);
-                  id = urlId ? urlId : me.docIds[0];
+                  id = urlId ? urlId : me.documents.filter(d => d.title === 'editor')[0].id;
                   me.open(id, doc => showDoc(doc));
                 });
           }
