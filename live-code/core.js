@@ -61,12 +61,20 @@ function App() {
     });
   };
 
-  var urlId = window.location.search.substr(1);
+  var parseUrlId = url => url.substr(1);
+  var urlId = () => parseUrlId(window.location.search);
+
   var navigate = function(id) {
     if (typeof id !== 'undefined') {
       var loc = window.location;
       window.location = `${loc.protocol}//${loc.host}${loc.pathname}?${id}`;
     }
+  };
+
+  var addHistory = function(id) {
+    var loc = window.location;
+    var newurl = `${loc.protocol}//${loc.host}${loc.pathname}?${id}`;
+    window.history.pushState({path:newurl, id}, id, newurl);
   };
 
   var docTemplate = {
@@ -92,6 +100,19 @@ function App() {
     }));
     return ids;
   };
+
+  window.addEventListener('popstate', function (e) {
+    if (e.state) {
+      window.Spruce.store("App").Storage.read(e.state.id, doc => {
+        showDoc(doc);
+      });
+    }
+  });
+
+  var naviId = urlId();
+  if (naviId) {
+    addHistory(naviId);
+  }
 
   return {
     Storage: {
@@ -124,7 +145,8 @@ function App() {
                     return { id: doc.id, title: doc.title };
                   });
                   me.docIds = docs.map(d => d.id);
-                  id = urlId ? urlId : me.documents.filter(d => d.title === 'editor')[0].id;
+                  var appId = urlId();
+                  id = appId ? appId : me.documents.filter(d => d.title === 'editor')[0].id;
                   me.open(id, doc => showDoc(doc));
                 });
           }
@@ -159,7 +181,8 @@ function App() {
         this.read(this.docId, cb);
       },
       read: function(id, cb) {
-          this.db.code.get(parseInt(id)).then(function(res) {
+        console.log("read: ", id);
+        this.db.code.get(parseInt(id)).then(function(res) {
           cb(res);
         }).catch(function (err) {
           console.log("err", err);
@@ -170,11 +193,25 @@ function App() {
           cb = _res => {};
         }
         this.db.code.put(Object.assign({}, {...doc})).then(res => cb());
+      },
+      dump: function(cb) {
+        this.db.export({prettyJson: true, progressCallback: ({totalRows, completedRows}) => {
+          console.log("`Exported ${completedRows}/${totalRows}`");
+        }}).then(res => {
+          cb(res);
+          console.log("res", res);
+        });
       }
     },
 
     Browser: {
       show: showDoc,
+      go: id => {
+        window.Spruce.store("App").Storage.read(id, doc => {
+          showDoc(doc);
+          addHistory(id);
+        });
+      },
       exportHTML: exportHtml,
       docId: urlId,
       navigate,
