@@ -1,0 +1,21 @@
+<div class="m-2">
+  <button @click="{
+    $store.App.Storage.db.export({
+      prettyJson: true,
+      progressCallback: ({totalRows, completedRows}) => {
+      }
+    }).then(res => saveAs(res, 'dump.json'))
+  }" class="px-2 py-1 bg-gray-200">Dump database</button>
+  <div class="mt-2">
+    <p class="text-md font-semibold">Documents:</p>
+    <ul class="ml-4 list-decimal">
+      <template x-for="({id,title}) in $store.App.Storage.documents">
+        <li>
+          <a class="cursor-pointer text-blue-700 hover:underline"
+             @click="$store.App.Browser.go(id)"
+             x-text="`${title} (${id})`"></a>
+        </li>
+      </template>
+    </ul>
+  </div>
+</div>
