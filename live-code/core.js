@@ -148,6 +148,7 @@ function App() {
       remove: function(id) {
         console.log("remove", id);
         this.docIds = this.docIds.filter(docId => parseInt(id) !== parseInt(docId));
+        this.documents = this.documents.filter(d => parseInt(id) !== parseInt(d.id));
         this.db.code.delete(parseInt(id));
         if (!this.docIds.length) {
           this.create({body: '', 'head': '', title: ''});
