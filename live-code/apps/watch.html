@@ -1,11 +1,12 @@
-<div x-data="{ pos: 0, documents: documents = $store.App.Storage.documents,
+<div x-data="{ pos: 0, deps: '',
+   documents: documents = $store.App.Storage.documents,
    openDoc: (docId) => $store.App.Storage.open(docId, doc => $store.App.Browser.show(doc, document.getElementById('container')))} " x-init="() => {
    $store.App.Storage.db.on('changes', function(changes) {
     changes.forEach(change => {
       switch (change.type) {
         case 2: // updated
-          if (change.key === documents[pos].id) {
-            $store.App.Storage.read(change.key, doc => $store.App.Browser.show(doc, document.getElementById('container')));
+          if (change.key === documents[pos].id || deps.split(',').map(id => parseInt(id.trim())).includes(change.key)) {
+            $store.App.Storage.read(documents[pos].id, doc => $store.App.Browser.show(doc, document.getElementById('container')));
           }
           break;
       }
@@ -21,6 +22,7 @@
         <option :value="i" x-text="`${title} (${docId}) ${i}`" x-bind:selected="i===pos"></option>
       </template>
     </select>
+    <input placeholder="dep1,dep2" x-model="deps" class="border mx-2 p-1"></input>
     <button class="ml-2 px-2 py-1 bg-gray-200" @click="openDoc(documents[--pos].id)">Prev</button>
     <button class="ml-2 px-2 py-1 bg-gray-200" @click="openDoc(documents[++pos].id)">Next</button>
     <button class="ml-2 px-2 py-1 bg-gray-200"
