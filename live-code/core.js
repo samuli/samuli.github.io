@@ -154,11 +154,11 @@ function App() {
       },
       create: function(doc, cb, db) {
         var me = this;
-        doc = Object.assign(docTemplate, doc);
+        var data = Object.assign(docTemplate, doc);
         if (typeof db === 'undefined') {
           db = this.db;
         }
-        db.code.add(doc).then(function(id) {
+        db.code.put(data).then(function(id) {
           me.docIds.push(id);
           me.write({...doc, id});
           me.documents.push({id,title:doc.title});
