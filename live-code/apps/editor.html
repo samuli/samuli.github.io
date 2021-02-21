@@ -1,44 +1,46 @@
-<div x-data="{ pos: 0, documents: documents = $store.App.Storage.documents,
-   openDoc: (docId) => $store.App.Storage.open(docId, doc => $store.App.Browser.show(doc, document.getElementById('container')))} " x-init="() => {
-   $store.App.Storage.db.on('changes', function(changes) {
-    changes.forEach(change => {
-      switch (change.type) {
-        case 2: // updated
-          if (change.key === documents[pos].id) {
-            $store.App.Storage.read(change.key, doc => $store.App.Browser.show(doc, document.getElementById('container')));
-          }
-          break;
-      }
-    });
-  });
-}" >
-  <div class="flex items-center m-2 z-10000">
-    <div class="font-semibold mr-1">View:</div>
-    <select
-          @change="pos = $event.target.value; openDoc(documents[pos].id)"
-          class="">
-      <template x-for="({id:docId,title}, i) in documents" :key=docId>
-        <option :value="i" x-text="`${title} (${docId}) ${i}`" x-bind:selected="i===pos"></option>
+<div x-data="{
+             section: 'body', id: $store.App.Browser.docId,
+             documents: $store.App.Storage.documents,
+             doc: { head: '', body: '', script: '' } }"
+     x-init="() => {
+        $store.App.Storage.read(id, d => doc = d);
+         }">
+  <div class="m-2 flex">
+    <div class="mr-2 flex items-center">Edit</div>
+    <select x-model="id"
+            @change="$store.App.Storage.read(id, _doc => doc = _doc )"
+            class="flex">
+      <template x-for="{id:docId,title} in documents" :key=docId>
+        <option :value="docId" x-text="`${title} (${docId})`" x-bind:selected="docId===id"></option>
       </template>
     </select>
-    <button class="ml-2 px-2 py-1 bg-gray-200" @click="openDoc(documents[--pos].id)">Prev</button>
-    <button class="ml-2 px-2 py-1 bg-gray-200" @click="openDoc(documents[++pos].id)">Next</button>
-    <button class="ml-2 px-2 py-1 bg-gray-200"
-            @click.stop="$store.App.Storage.read(documents[pos].id, doc => {
-      doc.head = '<script src=\'https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.x.x/dist/alpine.min.js\' defer></script>' + doc.head;
-      var css = $store.App.Browser.exportHTML(doc, function(css) {
-        var fileName = documents[pos].id + '.html';
-        var html =
-        `<!doctype html><html lang='en'>
-           <head>${doc.head}
-             <style>${css}</style>
-            </head><body>${doc.body}</body></html>`;
-        var blob = new Blob([html], {
-          type: 'text/plain;charset=utf-8'
-        });
-        saveAs(blob, fileName);
-      });
-    })">Download</button>
+    <select x-model="section" class="ml-2">
+      <template x-for="s in ['head', 'body']">
+        <option x-text="s"></option>
+      </template>
+    </select>
+    <div @click="{ if (title = prompt('Document title?')) {
+      $store.App.Storage.create({title}, newId => {
+        id = newId;
+        $store.App.Storage.read(id, d => doc = d)
+      })}}"
+         class="ml-2 px-2 py-1 bg-gray-200 cursor-pointer">
+      New</div>
+    <div @click="if (confirm('Delete document?')) {
+                 $store.App.Storage.remove(id);
+                 $store.App.Storage.read($store.App.Storage.docIds[0], _doc => doc = _doc)
+                 }"
+         class="ml-2 px-2 py-1 bg-red-500 cursor-pointer">
+      Delete</div>
   </div>
-  <div id="container"></div>
+  <textarea x-model="doc[section]"
+            x-on:change="{
+                     doc[section] = $event.target.value;
+                     $store.App.Storage.write(doc)
+                     }"
+            resizable="resizable" placeholder="<div>hello world</div>"
+            spellcheck="false" style="height:500px"
+            class="h-full p-4 my-2 w-full bg-gray-200 text-xs font-mono
+                       focus:border-yellow-500 border-2">
+  </textarea>
 </div>

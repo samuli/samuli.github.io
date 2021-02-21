@@ -1,48 +1,38 @@
-<svg id="bkg" class="absolute" style="top:100px;height:100%;width:100%"></svg>
-
-<div x-ref="container" x-data="{ draw: false, ind: 0, pts: [ [] ], stroke: [], lastPos: [0,0],
-delta: 0, minDelta: 3, penSize: 2, bkg: document.getElementById('bkg'),
-endStroke: (points, color, penSize) => {
-  var l = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-  l.setAttribute('points', points.map(([x,y]) => `${x},${y}`).join(' ') );
-  l.style.stroke = color;
-  l.style.fill = 'none';
-  l.style['stroke-width'] = penSize;
-  document.getElementById('bkg').appendChild(l);
-}, clear: () => {
-  this.pts = [[]]; this.ind = 0; this.lastPos = [0,0];
-  document.getElementById('bkg').innerHTML = '';
-}, save: (title) => { $store.App.Storage.create(
-  { title, head: '', body: `<svg>${document.getElementById('bkg').innerHTML}</svg>`}, id => { } )}
-}" x-init="
-  initTemplates();
-  var top = `${$refs.navi.getClientRects()[0].height}px`;
-  document.getElementById('bkg').style.top = top;
-  $refs.overlay.style.top = top;
-">
-<div x-ref="navi" class="flex items-center">
-  <div><button class="bg-gray-200 mx-2 px-2 py-1"
-    @click="if (t = prompt('Title?')) { save(t) }">Save as...</button></div>
-  Delta <input class="w-10 mx-2 border" type="number" min="1" max="100" x-model="minDelta"></input>
-  Pen <input class="w-10 ml-2 border" type="number" min="1" max="40" x-model="penSize"></input>
-  <div><button class="bg-gray-200 mx-2 px-2 py-1" @click="clear()">Clear</button></div>
-</div>
-
-<div x-ref="overlay" x-on:mousedown="ind++; draw=true;" class="absolute h-screen w-full" style="top: 100px">
-
-<svg class="absolute"
-  x-on:mouseup="draw=false; lastPos = [0,0];
-    endStroke(stroke, '#ff0000', penSize); stroke = [];"
-  x-on:mousemove="if (draw) {
-    x = $event.clientX; y = $event.clientY;
-    delta = Math.abs(x-lastPos[0]) + Math.abs(y-lastPos[1]);
-    if (delta >= minDelta) {
-      stroke.push([$event.clientX, $event.clientY-$refs.overlay.offsetTop]);
-      lastPos = [x,y];
-    }
-  }"
-height="100%" width="100%">
- <polyline x-bind:points="stroke.map(([x,y]) => `${x},${y}`).join(' ')" x-bind:style="`fill:none;stroke:red;stroke-width:${penSize}`" />
+<svg id="bkg" class="absolute stroke-current"
+style="top:100px;height:100%;width:100%">
+  <g id="layer-1"></g>
+  <g id="layer-0"></g>
 </svg>
-</div>
+
+<div x-ref="container" x-data="drawApp()" x-init="initApp()"
+  @keypress.window.prevent="keypress($event)">
+  <div x-ref="navi" class="flex items-center">
+    <div>
+      <button class="bg-gray-200 mx-2 px-2 py-1"
+      @click="if (t = prompt('Title?')) { save(t) }">Save as...</button>
+    </div>
+    Delta <input class="w-10 mx-2 border" type="number" min="1" max="100" x-model="minDelta"></input>
+    Pen <input class="w-10 ml-2 border" type="number" min="1" max="40" x-model="penSize"></input>
+    Layer <input class="w-10 ml-2 border" type="number" min="0" max="1" x-model="layer"></input>
+    <div x-bind:class="`w-6 h-6 ${getStrokeClass().replace('text','bg')}`"></div>
+    <div>
+      <button class="bg-gray-200 mx-2 px-2 py-1" @click="clear()">Clear</button>
+      <button class="bg-gray-200 mx-2 px-2 py-1" @click="togglePreview()">Preview</button>
+      <button class="bg-gray-200 mx-2 px-2 py-1" @click="toggleEdit()" x-text="`Edit ${edit}`"></button>
+
+    </div>
+  </div>
+
+  <div x-show="!edit" x-ref="overlay" x-on:mousedown="mousedown()"
+    class="absolute h-screen w-full" style="top: 100px">
+    <svg class="absolute stroke-current"
+      x-on:mouseup="mouseup()" x-on:mousemove="mousemove($event)"
+      height="100%" width="100%">
+      <polyline
+        x-bind:points="stroke.map(([x,y]) => `${x},${y}`).join(' ')"
+        x-bind:style="`fill:none;stroke-width:${penSize}`"
+        x-bind:class="getStrokeClass()" />
+    </svg>
+  </div>
+  <div x-text="saveData" x-show="preview" class="m-2 bg-gray-200 text-xs"></div>
 </div>

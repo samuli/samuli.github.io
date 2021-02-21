@@ -1,0 +1,66 @@
+<div x-data="{
+  section: 'body', id: $store.App.Browser.docId,
+  doc: { head: '', body: '', script: '' }, editor: null,
+  initEditor: () => {
+    this.editor = ace.edit('editor-area');
+    this.editor.setTheme('ace/theme/monokai');
+    this.editor.session.setMode('ace/mode/html');
+    this.editor.session.setOptions({ tabSize: 2, useSoftTabs: true });
+  },
+  open: (id,section) => {
+    if (!this.editor) { return; }
+    $store.App.Storage.read(id, _doc => {
+      this.doc = _doc;
+      this.editor.setValue(this.doc[section]);
+    });
+  },
+  setValue: (section) => {
+    if (!this.editor) { return; }
+    this.editor.setValue(this.doc[section]);
+  },
+  save: (section) => {
+    this.doc[section] = this.editor.getValue();
+    $store.App.Storage.write(doc)
+  }
+}"
+x-init="() => {
+ //$store.App.Storage.read(id, d => doc = d);
+ if ($store.App.isJSLoaded()) {
+   initEditor();
+ } else {
+   $store.App.onJSLoaded(() => initEditor());
+ }
+}"
+@keydown.window.prevent.ctrl.s="save(section)"
+>
+  <div class="m-2 flex">
+    <div class="mr-2 flex items-center">Edit</div>
+    <select x-model="id"
+            @change="open($event.target.value, section)"
+            class="flex">
+      <template x-for="{id:docId,title} in $store.App.Storage.documents" :key=docId>
+        <option :value="docId" x-text="`${title} (${docId})`" x-bind:selected="docId===id"></option>
+      </template>
+    </select>
+    <select x-model="section" class="ml-2"
+            @change="setValue($event.target.value)">
+      <template x-for="s in ['head', 'body']">
+        <option x-text="s"></option>
+      </template>
+    </select>
+    <div @click="{ if (title = prompt('Document title?')) {
+      $store.App.Storage.create({title}, newId => {
+        id = newId;
+        $store.App.Storage.read(id, d => doc = d)
+      })}}"
+         class="ml-2 px-2 py-1 bg-gray-200 cursor-pointer">
+      New</div>
+    <div @click="if (confirm('Delete document?')) {
+                 $store.App.Storage.remove(id);
+                 $store.App.Storage.read($store.App.Storage.docIds[0], _doc => doc = _doc)
+                 }"
+         class="ml-2 px-2 py-1 bg-red-500 cursor-pointer">
+      Delete</div>
+  </div>
+  <div style="position:absolute;top:40px;height:95%;" class="w-full" id="editor-area"></div>
+</div>

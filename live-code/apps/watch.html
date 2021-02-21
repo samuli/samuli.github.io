@@ -1,11 +1,11 @@
-<div x-data="{ pos: 0, deps: '',
+<div x-data="{ exportStatic: false, pos: 0, deps: '',
    documents: documents = $store.App.Storage.documents,
    openDoc: (docId) => $store.App.Storage.open(docId, doc => $store.App.Browser.show(doc, document.getElementById('container')))} " x-init="() => {
    $store.App.Storage.db.on('changes', function(changes) {
     changes.forEach(change => {
       switch (change.type) {
         case 2: // updated
-          if (change.key === documents[pos].id || deps.split(',').map(id => parseInt(id.trim())).includes(change.key)) {
+           if (change.key === documents[pos].id || deps.split(',').map(id => parseInt(id.trim())).includes(change.key)) {
             $store.App.Storage.read(documents[pos].id, doc => $store.App.Browser.show(doc, document.getElementById('container')));
           }
           break;
@@ -28,19 +28,20 @@
     <button class="ml-2 px-2 py-1 bg-gray-200"
             @click.stop="$store.App.Storage.read(documents[pos].id, doc => {
       doc.head = '<script src=\'https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.x.x/dist/alpine.min.js\' defer></script>' + doc.head;
-      var css = $store.App.Browser.exportHTML(doc, function(css) {
+      $store.App.Browser.exportHTML(doc, function({css,head,body}) {
         var fileName = documents[pos].id + '.html';
         var html =
         `<!doctype html><html lang='en'>
-           <head>${doc.head}
+           <head>${head}
              <style>${css}</style>
-            </head><body>${doc.body}</body></html>`;
+            </head><body>${body}</body></html>`;
         var blob = new Blob([html], {
           type: 'text/plain;charset=utf-8'
         });
         saveAs(blob, fileName);
-      });
+      }, exportStatic);
     })">Download</button>
+    <input type="checkbox" x-model="exportStatic"> static
   </div>
   <div id="container"></div>
 </div>
