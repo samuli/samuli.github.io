@@ -2,6 +2,8 @@
 function App() {
   var scriptsToLoad = [];
   var scriptsLoaded = [];
+  var inlineScripts = [];
+  var onJSLoadedCB = null;
 
   var showDoc = function(doc, bodyElement) {
     var d = document;
@@ -9,37 +11,48 @@ function App() {
     d.getElementsByTagName('head')[0].innerHTML = doc.head;
     var headEl = d.getElementsByTagName('head')[0];
     var tags = [];
+    // Collect external scripts to be loaded
     Array.from(headEl.getElementsByTagName("script")).forEach(function (s) {
       if (s.attributes && s.attributes.src) {
         var src = s.attributes.src.nodeValue;
         if (scriptsLoaded.includes(src)) {
           s.remove();
         } else {
-          var tag = d.createElement("script");
-          tag.setAttribute("src", src);
-          tag.setAttribute("type", "text/javascript");
-          scriptsToLoad.push(src);
-          tag.addEventListener("load", function(e) {
-            scriptsLoaded.push(src);
-            scriptsToLoad = scriptsToLoad.filter(s => s !== src);
-            if (!scriptsToLoad.length && window.__init__) {
-              __init__();
-            }
-          });
-          tags.push(tag);
+          var defer = typeof s.attributes.defer !== 'undefined';
+          scriptsToLoad.push([src, defer]);
           s.remove();
         }
       } else {
-        var scriptTag = d.createElement("script");
-        scriptTag.setAttribute("type", "text/javascript");
-        var el = d.createTextNode(s.innerText);
-        scriptTag.appendChild(el);
-        headEl.appendChild(scriptTag);
+        inlineScripts.push(s);
         s.remove();
       }
     });
-    tags.forEach(function(tag) {
+    // Load external scripts
+    scriptsToLoad.forEach(([src,defer]) => {
+      var tag = d.createElement("script");
+      tag.setAttribute("src", src);
+      if (defer) {
+        tag.setAttribute("defer", "defer");
+      }
+      tag.setAttribute("type", "text/javascript");
+      tag.addEventListener("load", function(e) {
+        scriptsLoaded.push(src);
+        if (scriptsToLoad.length === scriptsLoaded.length
+            //&& window.__init__
+            && onJSLoadedCB
+        ) {
+          onJSLoadedCB();
+          //__init__();
+        }
+      });
       headEl.appendChild(tag);
+    });
+    inlineScripts.forEach(tag => {
+      var scriptTag = d.createElement("script");
+      scriptTag.setAttribute("type", "text/javascript");
+      var el = d.createTextNode(tag.innerText);
+      scriptTag.appendChild(el);
+      headEl.appendChild(scriptTag);
     });
 
     // Body
@@ -49,15 +62,17 @@ function App() {
     bodyElement.innerHTML = doc.body;
   };
 
-  var exportHtml = function(doc, cb) {
+  var exportHtml = function(doc, cb, static) {
     var win = window.open('export.html', 'export');
     win.addEventListener('load', () => {
       win.showDoc(doc);
-      setTimeout(() => {
-        var css = win.exportHtml();
+      win.exportHtml(function(data) {
         win.close();
-        cb(css);
-      }, 200);
+        if (typeof static === 'undefined' || !static) {
+          data = {...doc, css: data.css};
+        }
+        cb(data);
+      }, static);
     });
   };
 
@@ -115,6 +130,9 @@ function App() {
   }
 
   return {
+    isJSLoaded: () => scriptsLoaded.length === scriptsToLoad.length,
+    onJSLoaded: (cb) => onJSLoadedCB = cb,
+
     Storage: {
       db: new Dexie("code"),
       docIds: [],
@@ -129,13 +147,14 @@ function App() {
 
         this.db.open();
         var me = this;
+        var startupApp = 'dump';
         this.db.code.count().then(function(cnt) {
           if (!cnt) {
             bootstrap(me.db).then(docs => {
               me.documents = docs;
               me.docIds = docs.map(d => d.id);
               if (me.docIds) {
-                navigate(me.documents.filter(d => d.title === 'editor')[0].id);
+                navigate(me.documents.filter(d => d.title === startupApp)[0].id);
               }
             });
           } else {
@@ -146,7 +165,7 @@ function App() {
                   });
                   me.docIds = docs.map(d => d.id);
                   var appId = urlId();
-                  id = appId ? appId : me.documents.filter(d => d.title === 'editor')[0].id;
+                  id = appId ? appId : me.documents.filter(d => d.title === startupApp)[0].id;
                   me.open(id, doc => showDoc(doc));
                 });
           }

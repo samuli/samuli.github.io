@@ -103,22 +103,52 @@ var getStyleRuleValue = function(selector) {
   return null;
 };
 
-var exportHtml = function() {
-  var doc = document;
+var exportHtml = function(cb, static) {
+  setTimeout(function() {
+    static = typeof static !== 'undefined' ? static : false;
+    var doc = document;
 
-  // root-level CSS rules
-  var nonClassRules = getNonClassStyleRuleValues(doc);
+    // root-level CSS rules
+    var nonClassRules = getNonClassStyleRuleValues(doc);
 
-  // css-class rules
-  var reg = /class="([a-zA-Z0-9\.\-_\s]*)/g;
-  var html = document.getElementsByTagName("html")[0].innerHTML;
-  arr = [...html.matchAll(reg)]
-    .map(res => res[1].split(" "))
-    .reduce((acc, el) => acc.concat(el), [])
-    .filter(onlyUnique)
-    .map(className => getStyleRuleValue(`.${className.replace(".", "\\.")}`), doc)
-    .concat(["*","body"].map(className => getStyleRuleValue(className, doc)))
-  ;
+    // css-class rules
+    var reg = /class="([a-zA-Z0-9\.\-_\s]*)/g;
+    var html = document.getElementsByTagName("html")[0].innerHTML;
+    arr = [...html.matchAll(reg)]
+      .map(res => res[1].split(" "))
+      .reduce((acc, el) => acc.concat(el), [])
+      .filter(onlyUnique)
+      .map(className => getStyleRuleValue(`.${className.replace(".", "\\.")}`), doc)
+      .concat(["*","body"].map(className => getStyleRuleValue(className, doc)))
+    ;
+    var css = nonClassRules.concat(arr).join("");
 
-  return nonClassRules.concat(arr).join("");
+    if (static) {
+      // script tags
+      Array.from(doc.getElementsByTagName("script")).forEach(el => {
+          el.parentNode.removeChild(el);
+      });
+      // template tags
+      Array.from(doc.getElementsByTagName("body")[0]
+        .getElementsByTagName("template")).forEach(el => {
+          el.parentNode.removeChild(el);
+      });
+      // alpine x-attributes
+      Array.from(doc.querySelectorAll("*")).forEach(el => {
+          var attr = el.attributes;
+          for (var i=0; i<attr.length; i++) {
+            var name = attr[i].nodeName;
+            if (/^x-/.test(name)) {
+              el.removeAttribute(name);
+            }
+          }
+      });
+    }
+
+    cb({
+      css,
+      body: doc.getElementsByTagName("body")[0].innerHTML,
+      head: doc.getElementsByTagName("head")[0].innerHTML
+    });
+  }, 1000);
 };

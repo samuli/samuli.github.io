@@ -7,10 +7,14 @@
   <meta name="description" content="">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
+
+
+  <script src="https://cdn.jsdelivr.net/gh/alpine-collective/alpine-magic-helpers@1.0.x/dist/index.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.x.x/dist/alpine.min.js" defer></script>
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.0/FileSaver.min.js"></script>
 
   <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
+  <script src="https://unpkg.com/dexie-export-import/dist/dexie-export-import.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dexie-observable@3.0.0-beta.10/dist/dexie-observable.min.js"></script>
 
 
@@ -27,6 +31,7 @@
   </script>
 
   <link href="stack.css" rel="stylesheet">
+
 </head>
 
 <body x-data="window.__app__" x-init="Storage.init()">Loading...</body>
