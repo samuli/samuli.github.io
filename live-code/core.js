@@ -65,6 +65,7 @@ function App() {
   var exportHtml = function(doc, cb, static) {
     var win = window.open('export.html', 'export');
     win.addEventListener('load', () => {
+      win.$store = {App: window.__app__};
       win.showDoc(doc);
       win.exportHtml(function(data) {
         win.close();

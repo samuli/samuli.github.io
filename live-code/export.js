@@ -1,8 +1,26 @@
 var scriptsToLoad = [];
 var scriptsLoaded = [];
 
-var showDoc = function(doc) {
+async function expandMacros(str) {
+  var reg = /{{(.*)}}/g;
+  var ids = [...str.matchAll(reg)];
+  ids = ids.map(([match,id]) => id).filter(onlyUnique).map(id => parseInt(id));
+  var docs = await $store.App.Storage.db.code.bulkGet(ids);
+
+  str = str.replaceAll(reg, function(match) {
+    var id = match.substr(2);
+    id = parseInt(id.substr(0,id.length-2));
+    var doc = docs.filter(d => d.id === id)[0];
+    return doc.body;
+  });
+
+  return str;
+}
+
+var showDoc = async function(doc) {
   var d = document;
+
+  doc.body = await expandMacros(doc.body);
 
   d.getElementsByTagName('head')[0].innerHTML = doc.head;
   var headEl = d.getElementsByTagName('head')[0];
@@ -32,7 +50,7 @@ var showDoc = function(doc) {
       scriptTag.setAttribute("type", "text/javascript");
       var el = d.createTextNode(s.innerText);
       scriptTag.appendChild(el);
-      headEl.appendChild(scriptTag);
+      headEl.prepend(scriptTag);
       s.remove();
     }
   });
@@ -121,34 +139,96 @@ var exportHtml = function(cb, static) {
       .map(className => getStyleRuleValue(`.${className.replace(".", "\\.")}`), doc)
       .concat(["*","body"].map(className => getStyleRuleValue(className, doc)))
     ;
-    var css = nonClassRules.concat(arr).join("");
+    var css = arr.concat(nonClassRules).join("");
+    var bodyEl = doc.getElementsByTagName("body")[0];
+    var body = bodyEl.innerHTML;
+    var headEl = doc.getElementsByTagName("head")[0];
+    var head = headEl.innerHTML;
 
     if (static) {
+      var staticString = false;
+      var preserveScriptTags = true;
+
+      bodyEl.innerHTML = body;
+      headEl.innerHTML = head;
+
+      Array.from(headEl.querySelectorAll("link[rel=\"stylesheet\"]")).forEach(el => {
+          el.parentNode.removeChild(el);
+      });
+
       // script tags
-      Array.from(doc.getElementsByTagName("script")).forEach(el => {
-          el.parentNode.removeChild(el);
-      });
+      if (!preserveScriptTags) {
+        Array.from(headEl.getElementsByTagName("script")).forEach(el => {
+            el.parentNode.removeChild(el);
+        });
+        Array.from(bodyEl.getElementsByTagName("script")).forEach(el => {
+            el.parentNode.removeChild(el);
+        });
+      }
+
+      var xxStaticElements = [];
+
       // template tags
-      Array.from(doc.getElementsByTagName("body")[0]
-        .getElementsByTagName("template")).forEach(el => {
-          el.parentNode.removeChild(el);
-      });
-      // alpine x-attributes
-      Array.from(doc.querySelectorAll("*")).forEach(el => {
-          var attr = el.attributes;
-          for (var i=0; i<attr.length; i++) {
-            var name = attr[i].nodeName;
-            if (/^x-/.test(name)) {
-              el.removeAttribute(name);
+      Array.from(bodyEl.getElementsByTagName("template")).forEach(el => {
+          var children = Array.from(el.querySelectorAll("*"));
+          for (let i=0; i<children.length; i++) {
+            let attr = el.attributes;
+            if (!attr) {
+              break;
+            }
+            let xxStatic = attr.getNamedItem("xx-static");
+            if (xxStatic) {
+              xxStaticElements.push(el);
+              break;
             }
           }
+          if (staticString || el.attributes.getNamedItem("xx-static")) {
+            el.parentNode.removeChild(el);
+          }
       });
+      // alpine x-attributes and xx-static|xx-class
+      var elements = Array.from(bodyEl.querySelectorAll("*"));
+      for (let i=0; i<elements.length; i++) {
+        let el = elements[i];
+        let attr = el.attributes;
+        if (!attr) {
+          continue;
+        }
+        let staticAttr = null;
+        let xxStatic = attr.getNamedItem("xx-static");
+        let xxClass = attr.getNamedItem("xx-class");
+        if (xxStatic) {
+          var val = xxStatic.nodeValue;
+          if (!val || val === "") {
+              staticAttr = true;
+          } else {
+            staticAttr = val.split(" ").map(s => s.trim());
+          }
+          xxStaticElements.push(el);
+        } else if (xxClass) {
+          xxStaticElements.push(el);
+        }
+        let remove = [];
+        for (let j=0; j<attr.length; j++) {
+          let name = attr[j].nodeName;
+          if (/^(x-|@)/.test(name)
+            && (staticString
+                || (staticAttr !== null && (staticAttr === true || staticAttr.includes(name))))
+          ) {
+            remove.push(name);
+          }
+        }
+        remove.forEach(name => el.removeAttribute(name));
+      }
+      xxStaticElements.forEach(el => {
+          el.removeAttribute("xx-static");
+          el.removeAttribute("xx-class");
+      });
+
+      body = bodyEl.innerHTML;
+      head = headEl.innerHTML;
     }
 
-    cb({
-      css,
-      body: doc.getElementsByTagName("body")[0].innerHTML,
-      head: doc.getElementsByTagName("head")[0].innerHTML
-    });
+    cb({ css,body,head });
   }, 1000);
 };
