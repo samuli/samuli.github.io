@@ -185,62 +185,64 @@ var exportHtml = function(cb, static) {
     var headEl = doc.getElementsByTagName("head")[0];
     var head = headEl.innerHTML;
 
-    if (static) {
-      var staticString = false;
+      if (static)
+          var staticString = false;
       var preserveScriptTags = true;
 
       var templateContent = [];
 
-      // Template tags
-      Array.from(bodyEl.getElementsByTagName("template")).forEach(tpl => {
-        // 1. create dom-elements from templates
-        if (Array.from(tpl.content.querySelectorAll("[xx-static]")).length) {
-          var el = document.createElement("div");
-          el.append(tpl.content.cloneNode(true));
-          tpl.parentNode.insertBefore(el, tpl);
-          templateContent.push([tpl,el]);
-        }
-      });
-      requestAnimationFrame(function() {
-        // 2. Update template content with rendered values
-        templateContent.forEach(([tpl,el]) => {
-            tpl.content.querySelector("div").replaceWith(el.querySelector("div"));
-            removeXAttributes(tpl.content, !staticString);
-            removeXXAttributes(tpl.content);
-        });
-
-        requestAnimationFrame(function() {
-          // Remove xx-drop nodes
-          Array.from(bodyEl.querySelectorAll("[xx-drop]"))
-            .forEach(el => el.parentNode.removeChild(el));
-
-          Array.from(bodyEl.querySelectorAll("template [xx-drop]"))
-            .forEach(el => el.parentNode.removeChild(el));
-
-          Array.from(headEl.querySelectorAll("link[rel=\"stylesheet\"]")).forEach(el => {
-              el.parentNode.removeChild(el);
-          });
-
-          // script tags
-          if (!preserveScriptTags) {
-            Array.from(headEl.getElementsByTagName("script")).forEach(el => {
-                el.parentNode.removeChild(el);
-            });
-            Array.from(bodyEl.getElementsByTagName("script")).forEach(el => {
-                el.parentNode.removeChild(el);
-            });
+      // Instantiate DOM elements from template tags so that Alpine
+      // can update dynamic values
+      {Array.from(bodyEl.getElementsByTagName("template")).forEach(tpl => {
+          // Create DOM-nodes, repaint
+          if (Array.from(tpl.content.querySelectorAll("[xx-static]")).length) {
+              var el = document.createElement("div");
+              el.append(tpl.content.cloneNode(true));
+              tpl.parentNode.insertBefore(el, tpl);
+              templateContent.push([tpl,el]);
           }
-
-          // Remove Alpine x-attributes
-          removeXAttributes(bodyEl, !staticString);
-          removeXXAttributes(bodyEl);
-
-          body = bodyEl.innerHTML;
-          head = headEl.innerHTML;
-
-          cb({ css,body,head });
-        });
       });
-    }
+       requestAnimationFrame(function() {
+           // 2. Update template content with rendered values, repaint
+           templateContent.forEach(([tpl,el]) => {
+               tpl.content.querySelector("div").replaceWith(el.querySelector("div"));
+               el.parentNode.removeChild(el);
+               removeXAttributes(tpl.content, !staticString);
+               removeXXAttributes(tpl.content);
+           });
+
+           requestAnimationFrame(function() {
+               // Remove xx-drop nodes
+               Array.from(bodyEl.querySelectorAll("[xx-drop]"))
+                    .forEach(el => el.parentNode.removeChild(el));
+
+               Array.from(bodyEl.querySelectorAll("template [xx-drop]"))
+                    .forEach(el => el.parentNode.removeChild(el));
+
+               Array.from(headEl.querySelectorAll("link[rel=\"stylesheet\"]")).forEach(el => {
+                   el.parentNode.removeChild(el);
+               });
+
+               // script tags
+               if (!preserveScriptTags) {
+                   Array.from(headEl.getElementsByTagName("script")).forEach(el => {
+                       el.parentNode.removeChild(el);
+                   });
+                   Array.from(bodyEl.getElementsByTagName("script")).forEach(el => {
+                       el.parentNode.removeChild(el);
+                   });
+               }
+
+               // Remove Alpine x-attributes
+               removeXAttributes(bodyEl, !staticString);
+               removeXXAttributes(bodyEl);
+
+               body = bodyEl.innerHTML;
+               head = headEl.innerHTML;
+
+               cb({ css,body,head });
+           });
+       });
+      }
   }, 1000);
 };
