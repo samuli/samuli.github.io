@@ -6,6 +6,10 @@ function drawApp() {
     draw: false, preview: false, edit: false,
     saveData: '',
     layer: 0,
+    frameIdx: 0,
+    frameCnt: 0,
+    play: false, playIntervalId: null, playFrameDuration: 200,
+    onionSkin: true,
     selected: [],
     ind: 0,
     pts: [ [] ],
@@ -23,6 +27,8 @@ function drawApp() {
       var top = `${this.$refs.navi.getClientRects()[0].height}px`;
       this.bkg.style.top = top;
       this.$refs.overlay.style.top = top;
+      this.addFrame();
+      this.showFrame();
     },
     mousedown: function() {
       this.draw = true;
@@ -48,6 +54,33 @@ function drawApp() {
     getStrokeClass: function() {
       return `text-${this.color}-${this.colorVariant}`;
     },
+    addFrame: function() {
+      var frame = bkg.getElementById("frame").content.cloneNode(true);
+      bkg.append(frame);
+      bkg.querySelector("g.frame:last-child")
+        .setAttribute("id", `frame-${this.frameCnt++}`);
+    },
+    getFrame: function(idx) {
+      return bkg.getElementById(`frame-${idx}`);
+    },
+    showFrame: function() {
+      Array.from(bkg.querySelectorAll("g.frame")).map(el => {
+        el.classList.add("hidden");
+        Array.from(Array(10).keys()).map(i => el.classList.remove(`opacity-${i*10}`));
+      });
+      if (this.onionSkin && !this.play) {
+        for (var i=Math.max(0,this.frameIdx-2); i<=Math.min(this.frameIdx+2, this.frameCnt-1); i++) {
+          dif = i-this.frameIdx;
+          var frame = this.getFrame(i);
+          if (i !== this.frameIdx) {
+            frame.classList.add(`opacity-${Math.abs(dif*20)}`);
+          }
+          frame.classList.remove("hidden");
+        }
+      } else {
+        this.getFrame(this.frameIdx).classList.remove("hidden");
+      }
+    },
     endStroke: function(points, color, penSize) {
       var me = this;
       var l = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
@@ -68,7 +101,7 @@ function drawApp() {
       });
       l.style.fill = 'none';
       l.style['stroke-width'] = penSize;
-      bkg.getElementById(`layer-${this.layer}`).appendChild(l);
+      bkg.querySelector(`#frame-${this.frameIdx} .layer-${this.layer}`).appendChild(l);
       this.undoStack.push(l);
     },
     toggleEdit: function() {
@@ -89,6 +122,7 @@ function drawApp() {
       }
     },
     keypress: function(e) {
+      console.log(e);
       switch (e.key) {
         case "a":
           this.penSizeIdx++;
@@ -120,8 +154,36 @@ function drawApp() {
             this.undoStack.push(l);
           }
           break;
+        case "d":
+          this.frameIdx = Math.max(0, --this.frameIdx);
+          this.showFrame();
+          break;
+        case "f":
+          if (this.frameIdx === this.frameCnt-1) {
+            this.addFrame();
+          }
+          this.frameIdx++;
+          this.showFrame();
+          break;
+        case " ":
+          this.play = !this.play;
+          var me = this;
+          if (this.play) {
+            console.log("start");
+            this.playIntervalId = setInterval(function() {
+              console.log("frame");
+              me.frameIdx++;
+              if (me.frameIdx > me.frameCnt-1) {
+                me.frameIdx = 0;
+              }
+              me.showFrame();
+            }, this.playFrameDuration);
+          } else {
+            clearInterval(this.playIntervalId);
+            this.showFrame();
+          }
+          break;
       }
-      console.log("undo", [JSON.stringify(this.undoStack), JSON.stringify(this.redoStack)]);
       var code = e.charCode;
       var colorMap = {
         q: "gray", w: "red", e: "blue", r: "yellow"
@@ -134,7 +196,7 @@ function drawApp() {
       }
      // console.log("key", e);
     },
-    save: (title) => $store.App.Storage.create(
+    save: (title) => this.$store.App.Storage.create(
       { title, head: '', body: `<svg>${this.getSaveData()}</svg>` },
       id => {}
     ),

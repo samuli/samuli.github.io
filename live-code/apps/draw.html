@@ -1,12 +1,16 @@
 <svg id="bkg" class="absolute stroke-current"
 style="top:100px;height:100%;width:100%">
-  <g id="layer-1"></g>
-  <g id="layer-0"></g>
+  <template id="frame">
+    <g class="frame">
+      <g class="layer-1"></g>
+      <g class="layer-0"></g>
+    </g>
+  </template>
 </svg>
 
 <div x-ref="container" x-data="drawApp()" x-init="initApp()"
   @keypress.window.prevent="keypress($event)">
-  <div x-ref="navi" class="flex items-center">
+  <div x-ref="navi" class="flex flex-wrap items-center">
     <div>
       <button class="bg-gray-200 mx-2 px-2 py-1"
       @click="if (t = prompt('Title?')) { save(t) }">Save as...</button>
@@ -14,6 +18,9 @@ style="top:100px;height:100%;width:100%">
     Delta <input class="w-10 mx-2 border" type="number" min="1" max="100" x-model="minDelta"></input>
     Pen <input class="w-10 ml-2 border" type="number" min="1" max="40" x-model="penSize"></input>
     Layer <input class="w-10 ml-2 border" type="number" min="0" max="1" x-model="layer"></input>
+    Frame <input class="w-10 ml-2 border" type="number" min="0" x-bind:max="frameCnt" x-bind:value="frameIdx"></input>
+    Speed <input class="w-10 ml-2 border" type="number" min="30" max="1000" x-model="playFrameDuration"></input>
+
     <div x-bind:class="`w-6 h-6 ${getStrokeClass().replace('text','bg')}`"></div>
     <div>
       <button class="bg-gray-200 mx-2 px-2 py-1" @click="clear()">Clear</button>
