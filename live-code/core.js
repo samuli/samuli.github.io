@@ -235,6 +235,17 @@ function App() {
       exportHTML: exportHtml,
       docId: urlId,
       navigate,
+    },
+
+    Cache: {
+      data: {},
+      put: function(key,data) {
+        this.data[key] = data;
+      },
+      get: function(key,defaultValue) {
+        return typeof this.data[key] !== 'undefined'
+          ? this.data[key] : defaultValue;
+      }
     }
   }
 }

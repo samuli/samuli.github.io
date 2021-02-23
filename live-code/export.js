@@ -1,26 +1,26 @@
 var scriptsToLoad = [];
 var scriptsLoaded = [];
 
-async function expandMacros(str) {
-  var reg = /{{(.*)}}/g;
-  var ids = [...str.matchAll(reg)];
-  ids = ids.map(([match,id]) => id).filter(onlyUnique).map(id => parseInt(id));
-  var docs = await $store.App.Storage.db.code.bulkGet(ids);
+// async function expandMacros(str) {
+//   var reg = /{{(.*)}}/g;
+//   var ids = [...str.matchAll(reg)];
+//   ids = ids.map(([match,id]) => id).filter(onlyUnique).map(id => parseInt(id));
+//   var docs = await $store.App.Storage.db.code.bulkGet(ids);
 
-  str = str.replaceAll(reg, function(match) {
-    var id = match.substr(2);
-    id = parseInt(id.substr(0,id.length-2));
-    var doc = docs.filter(d => d.id === id)[0];
-    return doc.body;
-  });
+//   str = str.replaceAll(reg, function(match) {
+//     var id = match.substr(2);
+//     id = parseInt(id.substr(0,id.length-2));
+//     var doc = docs.filter(d => d.id === id)[0];
+//     return doc.body;
+//   });
 
-  return str;
-}
+//   return str;
+// }
 
 var showDoc = async function(doc) {
   var d = document;
 
-  doc.body = await expandMacros(doc.body);
+//  doc.body = await expandMacros(doc.body);
 
   d.getElementsByTagName('head')[0].innerHTML = doc.head;
   var headEl = d.getElementsByTagName('head')[0];
@@ -121,6 +121,46 @@ var getStyleRuleValue = function(selector) {
   return null;
 };
 
+var removeXXAttributes = function(el) {
+  ['xx-class','xx-drop','xx-static'].forEach(attr => {
+    Array.from(el.querySelectorAll(`[${attr}`))
+      .forEach(el => el.removeAttribute(attr));
+  });
+};
+var removeXAttributes = function(el, checkXXStatic) {
+  var elements = Array.from(el.querySelectorAll("*"));
+  for (let i=0; i<elements.length; i++) {
+    let el = elements[i];
+    let attr = el.attributes;
+    if (!attr) {
+      continue;
+    }
+    let staticAttr = null;
+    if (checkXXStatic) {
+      let xxStatic = attr.getNamedItem("xx-static");
+      if (xxStatic) {
+        var val = xxStatic.nodeValue;
+        if (!val || val === "") {
+            staticAttr = true;
+        } else {
+          staticAttr = val.split(" ").map(s => s.trim());
+        }
+      }
+    }
+    let remove = [];
+    for (let j=0; j<attr.length; j++) {
+      let name = attr[j].nodeName;
+      if (/^(x-|@)/.test(name)
+        && (!checkXXStatic
+            || (staticAttr !== null && (staticAttr === true || staticAttr.includes(name))))
+      ) {
+        remove.push(name);
+      }
+    }
+    remove.forEach(name => el.removeAttribute(name));
+  }
+};
+
 var exportHtml = function(cb, static) {
   setTimeout(function() {
     static = typeof static !== 'undefined' ? static : false;
@@ -129,7 +169,7 @@ var exportHtml = function(cb, static) {
     // root-level CSS rules
     var nonClassRules = getNonClassStyleRuleValues(doc);
 
-    // css-class rules
+    // CSS-class rules (this includes xx-class attibutes)
     var reg = /class="([a-zA-Z0-9\.\-_\s]*)/g;
     var html = document.getElementsByTagName("html")[0].innerHTML;
     arr = [...html.matchAll(reg)]
@@ -149,86 +189,58 @@ var exportHtml = function(cb, static) {
       var staticString = false;
       var preserveScriptTags = true;
 
-      bodyEl.innerHTML = body;
-      headEl.innerHTML = head;
+      var templateContent = [];
 
-      Array.from(headEl.querySelectorAll("link[rel=\"stylesheet\"]")).forEach(el => {
-          el.parentNode.removeChild(el);
+      // Template tags
+      Array.from(bodyEl.getElementsByTagName("template")).forEach(tpl => {
+        // 1. create dom-elements from templates
+        if (Array.from(tpl.content.querySelectorAll("[xx-static]")).length) {
+          var el = document.createElement("div");
+          el.append(tpl.content.cloneNode(true));
+          tpl.parentNode.insertBefore(el, tpl);
+          templateContent.push([tpl,el]);
+        }
       });
-
-      // script tags
-      if (!preserveScriptTags) {
-        Array.from(headEl.getElementsByTagName("script")).forEach(el => {
-            el.parentNode.removeChild(el);
+      requestAnimationFrame(function() {
+        // 2. Update template content with rendered values
+        templateContent.forEach(([tpl,el]) => {
+            tpl.content.querySelector("div").replaceWith(el.querySelector("div"));
+            removeXAttributes(tpl.content, !staticString);
+            removeXXAttributes(tpl.content);
         });
-        Array.from(bodyEl.getElementsByTagName("script")).forEach(el => {
-            el.parentNode.removeChild(el);
+
+        requestAnimationFrame(function() {
+          // Remove xx-drop nodes
+          Array.from(bodyEl.querySelectorAll("[xx-drop]"))
+            .forEach(el => el.parentNode.removeChild(el));
+
+          Array.from(bodyEl.querySelectorAll("template [xx-drop]"))
+            .forEach(el => el.parentNode.removeChild(el));
+
+          Array.from(headEl.querySelectorAll("link[rel=\"stylesheet\"]")).forEach(el => {
+              el.parentNode.removeChild(el);
+          });
+
+          // script tags
+          if (!preserveScriptTags) {
+            Array.from(headEl.getElementsByTagName("script")).forEach(el => {
+                el.parentNode.removeChild(el);
+            });
+            Array.from(bodyEl.getElementsByTagName("script")).forEach(el => {
+                el.parentNode.removeChild(el);
+            });
+          }
+
+          // Remove Alpine x-attributes
+          removeXAttributes(bodyEl, !staticString);
+          removeXXAttributes(bodyEl);
+
+          body = bodyEl.innerHTML;
+          head = headEl.innerHTML;
+
+          cb({ css,body,head });
         });
-      }
-
-      var xxStaticElements = [];
-
-      // template tags
-      Array.from(bodyEl.getElementsByTagName("template")).forEach(el => {
-          var children = Array.from(el.querySelectorAll("*"));
-          for (let i=0; i<children.length; i++) {
-            let attr = el.attributes;
-            if (!attr) {
-              break;
-            }
-            let xxStatic = attr.getNamedItem("xx-static");
-            if (xxStatic) {
-              xxStaticElements.push(el);
-              break;
-            }
-          }
-          if (staticString || el.attributes.getNamedItem("xx-static")) {
-            el.parentNode.removeChild(el);
-          }
       });
-      // alpine x-attributes and xx-static|xx-class
-      var elements = Array.from(bodyEl.querySelectorAll("*"));
-      for (let i=0; i<elements.length; i++) {
-        let el = elements[i];
-        let attr = el.attributes;
-        if (!attr) {
-          continue;
-        }
-        let staticAttr = null;
-        let xxStatic = attr.getNamedItem("xx-static");
-        let xxClass = attr.getNamedItem("xx-class");
-        if (xxStatic) {
-          var val = xxStatic.nodeValue;
-          if (!val || val === "") {
-              staticAttr = true;
-          } else {
-            staticAttr = val.split(" ").map(s => s.trim());
-          }
-          xxStaticElements.push(el);
-        } else if (xxClass) {
-          xxStaticElements.push(el);
-        }
-        let remove = [];
-        for (let j=0; j<attr.length; j++) {
-          let name = attr[j].nodeName;
-          if (/^(x-|@)/.test(name)
-            && (staticString
-                || (staticAttr !== null && (staticAttr === true || staticAttr.includes(name))))
-          ) {
-            remove.push(name);
-          }
-        }
-        remove.forEach(name => el.removeAttribute(name));
-      }
-      xxStaticElements.forEach(el => {
-          el.removeAttribute("xx-static");
-          el.removeAttribute("xx-class");
-      });
-
-      body = bodyEl.innerHTML;
-      head = headEl.innerHTML;
     }
-
-    cb({ css,body,head });
   }, 1000);
 };
