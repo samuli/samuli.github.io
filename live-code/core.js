@@ -62,18 +62,19 @@ function App() {
     bodyElement.innerHTML = doc.body;
   };
 
-  var exportHtml = function(doc, cb, static) {
+  var exportHtml = function(doc, cb, options) {
     var win = window.open('export.html', 'export');
+    
     win.addEventListener('load', () => {
       win.$store = {App: window.__app__};
       win.showDoc(doc);
       win.exportHtml(function(data) {
-        win.close();
-        if (typeof static === 'undefined' || !static) {
-          data = {...doc, css: data.css};
-        }
+      win.close();
+        // if (!options.staticMarkup) {
+        //   data.body = doc.body;
+        // }
         cb(data);
-      }, static);
+      }, options);
     });
   };
 
@@ -178,9 +179,9 @@ function App() {
         if (typeof db === 'undefined') {
           db = this.db;
         }
-        db.code.put(data).then(function(id) {
+        delete data.id;
+        db.code.add(data).then(function(id) {
           me.docIds.push(id);
-          me.write({...doc, id});
           me.documents.push({id,title:doc.title});
           cb(id);
         }).catch(function(err) {

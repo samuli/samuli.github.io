@@ -16,9 +16,10 @@ var scriptsLoaded = [];
 
 //   return str;
 // }
-
+var docData = null;
 var showDoc = async function(doc) {
   var d = document;
+  docData = doc;
 
 //  doc.body = await expandMacros(doc.body);
 
@@ -160,89 +161,123 @@ var removeXAttributes = function(el, checkXXStatic) {
     remove.forEach(name => el.removeAttribute(name));
   }
 };
+var dropXXElements = function(bodyEl) {
+  Array.from(bodyEl.querySelectorAll("[xx-drop]"))
+    .forEach(el => el.parentNode.removeChild(el));
 
-var exportHtml = function(cb, static) {
+  Array.from(bodyEl.querySelectorAll("template [xx-drop]"))
+    .forEach(el => el.parentNode.removeChild(el));
+};
+
+var exportHtml = function(cb, { inlineCSS, staticMarkup }) {
   setTimeout(function() {
-    static = typeof static !== 'undefined' ? static : false;
     var doc = document;
-
-    // root-level CSS rules
-    var nonClassRules = getNonClassStyleRuleValues(doc);
-
-    // CSS-class rules (this includes xx-class attibutes)
-    var reg = /class="([a-zA-Z0-9\.\-_\s]*)/g;
-    var html = document.getElementsByTagName("html")[0].innerHTML;
-    arr = [...html.matchAll(reg)]
-      .map(res => res[1].split(" "))
-      .reduce((acc, el) => acc.concat(el), [])
-      .filter(onlyUnique)
-      .map(className => getStyleRuleValue(`.${className.replace(".", "\\.")}`), doc)
-      .concat(["*","body"].map(className => getStyleRuleValue(className, doc)))
-    ;
-    var css = arr.concat(nonClassRules).join("");
+    var docOrig = doc.cloneNode(true);
     var bodyEl = doc.getElementsByTagName("body")[0];
-    var body = bodyEl.innerHTML;
     var headEl = doc.getElementsByTagName("head")[0];
-    var head = headEl.innerHTML;
+    var css = null;
 
-      if (static)
-          var staticString = false;
-      var preserveScriptTags = true;
+    if (inlineCSS) {
+      // root-level CSS rules
+      var nonClassRules = getNonClassStyleRuleValues(doc);
 
+      // CSS-class rules (this includes xx-class attibutes)
+      var reg = /class="([a-zA-Z0-9\.\-_\s]*)/g;
+      var html = document.getElementsByTagName("html")[0].innerHTML;
+      arr = [...html.matchAll(reg)]
+        .map(res => res[1].split(" "))
+        .reduce((acc, el) => acc.concat(el), [])
+        .filter(onlyUnique)
+        .map(className => getStyleRuleValue(`.${className.replace(".", "\\.")}`), doc)
+        .concat(["*","body"].map(className => getStyleRuleValue(className, doc)))
+      ;
+      css = arr.concat(nonClassRules).join("");
+    }
+
+    if (!staticMarkup) {
+        var data = { };
+        if (inlineCSS) {
+          Array.from(headEl.querySelectorAll("link[rel=\"stylesheet\"]")).forEach(el => {
+            el.parentNode.removeChild(el);
+          });
+          data.css = css;
+        }
+
+        // Remove xx-attributes
+        bodyEl = document.createElement("body");
+        bodyEl.innerHTML = docData.body;
+        dropXXElements(bodyEl);
+
+        var body = bodyEl.innerHTML;
+        var head = headEl.innerHTML;
+
+        console.log("head", head);
+
+        cb( {...data, body, head} );
+        return;
+    }
+
+    var preserveScriptTags = true;
+
+    if (staticMarkup) {
       var templateContent = [];
 
       // Instantiate DOM elements from template tags so that Alpine
       // can update dynamic values
-      {Array.from(bodyEl.getElementsByTagName("template")).forEach(tpl => {
-          // Create DOM-nodes, repaint
-          if (Array.from(tpl.content.querySelectorAll("[xx-static]")).length) {
-              var el = document.createElement("div");
-              el.append(tpl.content.cloneNode(true));
-              tpl.parentNode.insertBefore(el, tpl);
-              templateContent.push([tpl,el]);
-          }
+      Array.from(bodyEl.getElementsByTagName("template")).forEach(tpl => {
+        // Create DOM-nodes, repaint
+        if (Array.from(tpl.content.querySelectorAll("[xx-static]")).length) {
+          var el = document.createElement("div");
+          el.append(tpl.content.cloneNode(true));
+          tpl.parentNode.insertBefore(el, tpl);
+          templateContent.push([tpl,el]);
+        }
       });
-       requestAnimationFrame(function() {
-           // 2. Update template content with rendered values, repaint
-           templateContent.forEach(([tpl,el]) => {
-               tpl.content.querySelector("div").replaceWith(el.querySelector("div"));
-               el.parentNode.removeChild(el);
-               removeXAttributes(tpl.content, !staticString);
-               removeXXAttributes(tpl.content);
-           });
-
-           requestAnimationFrame(function() {
-               // Remove xx-drop nodes
-               Array.from(bodyEl.querySelectorAll("[xx-drop]"))
-                    .forEach(el => el.parentNode.removeChild(el));
-
-               Array.from(bodyEl.querySelectorAll("template [xx-drop]"))
-                    .forEach(el => el.parentNode.removeChild(el));
-
-               Array.from(headEl.querySelectorAll("link[rel=\"stylesheet\"]")).forEach(el => {
-                   el.parentNode.removeChild(el);
-               });
-
-               // script tags
-               if (!preserveScriptTags) {
-                   Array.from(headEl.getElementsByTagName("script")).forEach(el => {
-                       el.parentNode.removeChild(el);
-                   });
-                   Array.from(bodyEl.getElementsByTagName("script")).forEach(el => {
-                       el.parentNode.removeChild(el);
-                   });
-               }
-
-               // Remove Alpine x-attributes
-               removeXAttributes(bodyEl, !staticString);
-               removeXXAttributes(bodyEl);
-
-               body = bodyEl.innerHTML;
-               head = headEl.innerHTML;
-
-               cb({ css,body,head });
-           });
-       });
+    }
+    requestAnimationFrame(function() {
+      if (staticMarkup) {
+        // 2. Update template content with rendered values, repaint
+        templateContent.forEach(([tpl,el]) => {
+            tpl.content.querySelector("div").replaceWith(el.querySelector("div"));
+            el.parentNode.removeChild(el);
+            removeXAttributes(tpl.content, !staticString);
+            removeXXAttributes(tpl.content);
+        });
       }
+
+      requestAnimationFrame(function() {
+        // Remove xx-drop nodes
+        dropXXElements();
+        // Array.from(bodyEl.querySelectorAll("[xx-drop]"))
+        //      .forEach(el => el.parentNode.removeChild(el));
+
+        // Array.from(bodyEl.querySelectorAll("template [xx-drop]"))
+        //      .forEach(el => el.parentNode.removeChild(el));
+
+        Array.from(headEl.querySelectorAll("link[rel=\"stylesheet\"]")).forEach(el => {
+            el.parentNode.removeChild(el);
+        });
+
+        // script tags
+        if (!preserveScriptTags) {
+            Array.from(headEl.getElementsByTagName("script")).forEach(el => {
+                el.parentNode.removeChild(el);
+            });
+            Array.from(bodyEl.getElementsByTagName("script")).forEach(el => {
+                el.parentNode.removeChild(el);
+            });
+        }
+
+        // Remove Alpine x-attributes
+        removeXAttributes(bodyEl, !staticString);
+        removeXXAttributes(bodyEl);
+
+        body = bodyEl.innerHTML;
+        head = headEl.innerHTML;
+
+        console.log("head", head);
+        cb({ css, body, head });
+      });
+    });
   }, 1000);
 };
