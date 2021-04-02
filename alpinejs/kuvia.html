@@ -1,0 +1,91 @@
+<html>
+  <head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/1.3.0/tailwind.min.css">
+    <script src="https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.x.x/dist/alpine.js"></script>
+    <script>
+      function app() {
+          return {
+              baseUrl: 'https://api.finna.fi/api/v1',
+              searchFields: ["id", "title", "images"],
+              filters: ["online_boolean:1"],
+              params: {"lookfor": "koira", "page": 1, "limit": 10, "filters": ["online_boolean:1"], "field": ["id","title"], "type": "AllFields", "sort": "relevance", "lng": "fi"},
+              performSearch: function(e) { 
+                  this.loading = true;
+                  fetch(`${this.baseUrl}/search?lookfor=${this.params.lookfor}&type=${this.params.type}&sort=${this.params.sort}&page=${this.params.page}&limit=${this.params.limit}&prettyPrint=false&lng=${this.params.lng}&`
+                        + this.searchFields.map(field => `field[]=${field}`).join("&") + "&"
+                        + this.params.filters.map(f => `filter[]=${f}`).join("&"))
+                      .then(response => response.json())
+                      .then(data => {
+                          this.resultCount = data.resultCount;
+                          this.resultPages = Math.min(100, Math.ceil(data.resultCount/this.params.limit));
+                          var records = data.resultCount > 0 ? data.records : []
+                          this.records = records.filter(rec => rec.images && rec.images.length);
+                          this.loading = false;
+                          this.lookforCurrent = this.params.lookfor;
+                          this.info = this.resultCount > 0 ? `<span class="font-bold">${this.resultCount}</span> tulosta hakusanalla <em>${this.lookforCurrent}</em>` : "Ei tuloksia";
+                          this.newSearch = false;
+                      });
+              },
+              search: function() {
+                  this.params.page = 1;
+                  this.newSearch = true;
+                  this.performSearch();
+              },
+              jump: function(dir) {
+                  this.params.page = Math.max(1, parseInt(this.params.page) + dir);
+                  this.performSearch();
+              },
+              pageNums: function() {
+                  return Array.from(Array(this.resultPages).keys()).map(num => num+1);
+              },
+              imgBkg: function(rec) {
+                  return rec.images.length ? `background:url('https://api.finna.fi${rec.images[0]}') no-repeat center center; background-size: contain; min-width: 200px; min-height:200px` : "";
+              },
+              records: [],
+              lookorCurrent: "", info: "",
+              resultCount: 0, resultPages: 0,
+              loading: false, newSearch: true
+          }
+      }
+      </script>
+    <script>
+  document.write('<script src="http://' + (location.host || 'localhost').split(':')[0] +
+  ':35729/livereload.js?snipver=1"></' + 'script>')
+</script> 
+  </head>
+  <body>
+    <div class="h-full bg-gray-100 text-gray-800 p-4 lg:p-8 flex flex-wrap" x-data="app()" x-init="search">
+      <div style="position: absolute; top: 0; left: 0;" class="bg-green-700 text-white" x-show="loading">Ladataan...</div>
+      <!-- Search results -->
+      <div>
+        <form @submit.prevent="search" class="w-full">
+          <input x-model="params.lookfor" type="text" class="w-full text-xl p-4 border-grey-500 border-2" placeholder="Search..."></input>
+        </form>
+
+        <div x-show="!loading || !newSearch">
+          <div>
+            <div>
+              <select x-on:change="jump(0)" x-model="params.page">
+                <template x-for="num in pageNums()" :key="num">
+                  <option x-bind:value="num" x-text="`Sivu ${num}`"></option>
+                </template>
+              </select> /<span x-text="resultPages"></span></div>
+            <button x-show="params.page > 1" type="button" x-on:click="jump(-1)">Edellinen</button>
+            <button x-show="resultPages > params.page" type="button" x-on:click="jump(1)">Seuraava</button>
+          </div>
+
+          <p class="text-xl text-gray-600 font-light mb-4" x-html="info"></p>
+          <div class="w-full -mx-2 pb-8 flex flex-wrap">
+            <template x-for="rec in records" :key="rec.id">
+                <a x-bind:href="`https://finna.fi/Record/${encodeURIComponent(rec.id)}`" target="_blank" x-bind:title="rec.title">
+                  <div class="m-2 py-2 bg-blue-300 m-2 cursor-pointer relative" style="max-width:200px">
+                    <div class="leading-normal bg-contain w-full" x-bind:style="imgBkg(rec)"></div>
+                    <div class="p-2 break-normal" x-text="rec.title"></div>
+                  </div>
+                </a>
+            </template>
+          </div>
+        </div>
+      </div>
+  </body>
+</html>

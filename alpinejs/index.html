@@ -1,0 +1,122 @@
+<html>
+  <head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/1.3.0/tailwind.min.css">
+    <script src="https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.x.x/dist/alpine.js"></script>
+    <script>
+      function app() {
+          var recordFields = {"id": "", "title": "", "images": [], "rawData": [], "recordPage": ""};
+          var initRecord = function() { return recordFields; };
+          return {
+              baseUrl: 'https://api.finna.fi/api/v1',
+              searchFields: ["id", "title"],
+              filters: ["online_boolean:1"],
+              params: {"lookfor": "koira", "page": 1, "limit": 10, "filters": ["online_boolean:1"], "field": ["id","title"], "type": "AllFields", "sort": "relevance", "lng": "fi"},
+              search: function(e) { 
+                  this.loading = true;
+                  fetch(`${this.baseUrl}/search?lookfor=${this.params.lookfor}&type=${this.params.type}&sort=${this.params.sort}&page=${this.params.page}&limit=${this.params.limit}&prettyPrint=false&lng=${this.params.lng}&`
+                        + this.searchFields.map(field => `field[]=${field}`).join("&") + "&"
+                        + this.params.filters.map(f => `filter[]=${f}`).join("&"))
+                      .then(response => response.json())
+                      .then(data => {
+                          this.resultCount = data.resultCount;
+                          var records = data.resultCount > 0 ? data.records : []
+                          // Init field defaults
+                          records = records.map(function(rec) {
+                              for ([key,val] of Object.entries(recordFields)) {
+                                  rec[key] = rec[key] ?? val;
+                              }
+                              return rec;
+                          });
+                          this.records = records;
+                          this.loading = false;
+                          this.lookforCurrent = this.params.lookfor;
+                          this.info = this.resultCount > 0 ? `<span class="font-bold">${this.resultCount}</span> tulosta hakusanalla <em>${this.lookforCurrent}</em>` : "Ei tuloksia";
+                      });
+              },
+              view: function(record) {
+                  this.record = record;
+                  this.recordLoading = true;
+                  fetch(`${this.baseUrl}/record?id=${encodeURIComponent(record.id)}&prettyPrint=false&lng=${this.params.lng}&` + Object.keys(recordFields).map(f => `field[]=${f}`).join("&"))
+                      .then(response => response.json())
+                      .then(data => {
+                          if (data.resultCount > 0) {
+                              console.log(data);
+                              var rec = data.records[0];
+                              rec.images = rec.images ?? [];
+                              rec.recordPage = `https://finna.fi${rec.recordPage}`;
+                              this.record = rec;
+                              this.recordLoading = false;
+                          }
+                      });
+
+              },
+              fieldVal: function(key,val) {
+                  if (typeof val == 'string') {
+                      return val;
+                  }
+                  if (Array.isArray(val)) {
+                      val = val.map(entry => typeof entry.translated != "undefined" ? `${entry.translated} <pre class="ml-2 inline">${entry.value}</pre>` : val);
+                      return val.join("<br>");
+                  }
+                  return val.translated ?? val;
+              },
+              records: [],
+              lookorCurrent: "", info: "",
+              resultCount: 0,
+              loading: false, recordLoading: false,
+              record: initRecord()
+          }
+      }
+      </script>
+    <script>
+  document.write('<script src="http://' + (location.host || 'localhost').split(':')[0] +
+  ':35729/livereload.js?snipver=1"></' + 'script>')
+</script> 
+  </head>
+  <body>
+    <div class="h-full bg-gray-100 text-gray-800 p-4 lg:p-8 flex flex-wrap" x-data="app()" x-init="search">
+      <div style="position: absolute; top: 0; left: 0;" class="bg-green-700 text-white" x-show="loading">Ladataan...</div>
+      <!-- Search results -->      
+      <div class="w-1/2">
+        <form @submit.prevent="search" class="w-full">
+          <input x-model="params.lookfor" type="text" class="w-full text-xl p-4 border-grey-500 border-2" placeholder="Search..."></input>  
+        </form>
+        <p class="text-xl text-gray-600 font-light mb-4" x-html="info"></p>
+        <div class="w-full -mx-2 pb-8">
+          <template x-for="rec in records" :key="rec.id">
+            <div class="font-light" @click="view(rec)">
+              <div class="w-full bg-white m-2 border-l-4 border-white hover:border-blue-600 cursor-pointer relative" x-bind:class="{'bg-blue-200 border-blue-600' : rec.id == record.id}">
+                <div class="p-2 pr-4 leading-normal">
+                  <div class="font-medium text-xl truncate" x-text="rec.title"></div>
+                  <div class="truncate uppercase text-xs text-gray-500 font-semibold pb-2 tracking-widest" x-text="rec.id"></div>
+                </div>
+              </div>
+          </template>
+        </div>
+      </div>
+      <!-- Record page -->
+      <div class="w-1/2 pl-4" x-show="record">
+        <div>
+          <h1 x-text="record.title" class="text-2xl"></h1>
+          <a x-bind:href="record.recordPage" target="_blank" class="text-blue-700 hover:underline"><p x-text="record.id"></p></a>
+          <div x-show="record && !recordLoading">
+            <div>
+              <template x-for="img in record.images.slice(0,3)" :key="img">
+                <img x-bind:src="`https://api.finna.fi${img}`" class="w-full">
+              </template>
+            </div>
+            <a class="text-blue-700 hover:underline" target="_blank" x-show="record.images.length > 3" x-bind:href="record.recordPage" x-html="`Näytä kaikki ${record.images.length} kuvaa`"></a>
+
+            <div class="divide-y divide-grey-600">
+              <template x-for="[key,val] in Object.entries(record.rawData ?? {})" :key="`raw-${key}`">
+                <div class="flex flex-col border-top-1 border-grey-700 py-2">
+                  <div x-text="key" class="w-1/2 font-bold"></div>
+                  <div x-html="fieldVal(key,val)" class="text-left"></div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
+  </body>
+</html>
